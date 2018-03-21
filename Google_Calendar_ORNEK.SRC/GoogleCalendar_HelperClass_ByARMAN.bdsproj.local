@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2018.03.20 12:15:09.582.pas,C:\ARMAN.Study\Belgelerim\RAD Studio\Projects\Unit1.pas=C:\ARMAN.Study\Programming\Google_Calendar_ORNEK\Units\Unit1.pas</Transaction>
+    <Transaction>2018.03.20 12:15:09.583.dfm,C:\ARMAN.Study\Belgelerim\RAD Studio\Projects\Unit1.dfm=C:\ARMAN.Study\Programming\Google_Calendar_ORNEK\Units\Unit1.dfm</Transaction>
+    <Transaction>2018.03.20 12:15:43.472.bdsproj,C:\ARMAN.Study\Belgelerim\RAD Studio\Projects\Project1.bdsproj=C:\ARMAN.Study\Programming\Google_Calendar_ORNEK\GoogleCalendar_HelperClass_ByARMAN.bdsproj</Transaction>
+  </Transactions>
+</BorlandProject>

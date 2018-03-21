@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "delphican-api-projesi",
+  "private_key_id": "f22ee1015c44892b30f3ccdd33a010217b6d374a",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCXSicp1UfM8bpR\n7Fd1TLz/T+iF3IOd75C8g24Mdh7Fz/Vg4eNTO3zIOGuelP2BEUuezHd+h9rmUkjX\nX4oWIO4Zsw/Id64pe60TR/0Uo4yQEvVsr1bNR8sFhoaAWfHpOjY9BmRywvqmz4PP\nI/jsSGYCESFRKBk3wlNYvIFKH3Ij99Rkc3sJYPayXF/qGJIkOc7EeEI9v0cycLuZ\nBLSu0lUV910ZurbOO0Hr+P7Py1UrbBahuZoRMYo6sndrqN+Z9z0LrvPz06QF3r76\n7m9nX9Z7sTsSZH323SmMH3xJtq7riO09rSOrUTe7vFDAhdqYqDg+a0Aze3ioi1XQ\nTe247oP1AgMBAAECggEAGFWrnf156pu5MgM3gB0jS1fhmWKCYy2NFN15HpUDVyMf\nn4FGDPXFGPmGSgBCFHghNz5BPD+C9MgogkgSUIPkeIrGT6L8hxynFrJeIWs7KVN7\nWYuMhUF2hQGB8fRFxpN/9Onpz1HQenNnirKJEAyHJ+70cnbmM4NU37GWhEMxm1o6\n0XMCFzyCwLfgwcf41yVxAnXLZoAEt9CZuRcSukWkxn5iFn2lsmZssDqhmi1qQZdt\n0S7JBHnON/uVhOGJ6Ulu4M3F/ZLwWfFUcIIp5q1gP8b1CasJQ7AY2GZZj/IsoRVH\nFDsmAZofTkMUufakwtVQCWEUOlVNJajBIy9JbnGAgQKBgQDPGzr/aXdKPIy6OPml\naKiQJPZOichWY52R4lkd4NEDZmvQ3/512vCfsOwMH6uQV7BVdylnSGZscQY+U6a7\ncXGV5xext97zHyR54+23w/QbpiUOc3abYdRKkCKdyHc/aNgV8F9mUfRLza7J/PbV\nf0GePi7uJBTl9aO37ZhyK07JNQKBgQC7AY9WTguyejD+f4Z8K0Jc/msEqKyQCU62\nOMURhTnp/2oeFYhsztAESiXnp7V8v8dgi7mWVZDHdblyNn8qUZqYPQSSA5eVkkjN\nHSgSxYW3bjjehG67CnGWRnPwdNg1418bJE4cPIu1diYHvYPOlHzDx08Q4aWnWqru\n/Jk5aFLnwQKBgEz1gHHinfpPD7gvbc0iW+jcY06B8pjvgWDxbE4m+WQ7DftbEPJ4\nfgvJMZ27swP7IcJQemkvxSesxDYq3X0vxZZ/fhWDDuzm+KX2paIwxaf0kDaTf1J0\nAvAGKWbaVD2S1yEn5jteXtpAPyA9yPdCx35m+wdxDvb41XKGbqyWHTu1AoGAHW+l\nbGRkmvd49taECM+WZqT1m4ohf5q3dR+Chbt+3kKCJbImA1qai9JQHSLdAoH9lEjq\nMavOWldBlaTWZ4bo2sXgDkvadITOSNsqD6pf3fvPn9cgxvhh4NG+Nj9uOS1NLyyL\nzw4Iv8uVOOqv8LiW2wpoe7PJK4quFWhVhh/RzQECgYB10Tnjz/d7FCfp5U/U/imw\n7Uh2iN1bp/UYxBkH13z+FstRczhCe8QSHtrRYluRJH4EVtcuV92c57aND2AIWnwH\nuPtJrIwaOb85t3Tet+WNJu/aNJCH6OMA0B9/RgX3mVHaNMC9kJnkJykUBWNjrRaS\n9IuGD2zvalcJDbqnY7ECtg==\n-----END PRIVATE KEY-----\n",
+  "client_email": "delphican@delphican-api-projesi.iam.gserviceaccount.com",
+  "client_id": "113170451780333507057",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://accounts.google.com/o/oauth2/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/delphican%40delphican-api-projesi.iam.gserviceaccount.com"
+}
