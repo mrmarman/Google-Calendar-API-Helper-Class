@@ -139,59 +139,14 @@ object Form1: TForm1
         Font.Style = []
         ParentFont = False
       end
-      object Label24: TLabel
-        Left = 21
-        Top = 79
-        Width = 120
-        Height = 16
-        Alignment = taRightJustify
-        AutoSize = False
-        Caption = 'Takvimi Olu'#351'turan'
-        Font.Charset = DEFAULT_CHARSET
-        Font.Color = clWhite
-        Font.Height = -13
-        Font.Name = 'Tahoma'
-        Font.Style = []
-        ParentFont = False
-      end
       object Label25: TLabel
-        Left = 433
-        Top = 111
+        Left = 376
+        Top = 108
         Width = 60
         Height = 16
         Alignment = taRightJustify
         AutoSize = False
         Caption = 'Color Id'
-        Font.Charset = DEFAULT_CHARSET
-        Font.Color = clWhite
-        Font.Height = -13
-        Font.Name = 'Tahoma'
-        Font.Style = []
-        ParentFont = False
-      end
-      object Label26: TLabel
-        Left = 44
-        Top = 126
-        Width = 96
-        Height = 16
-        Alignment = taRightJustify
-        AutoSize = False
-        Caption = 'Olu'#351'turan eposta'
-        Font.Charset = DEFAULT_CHARSET
-        Font.Color = clWhite
-        Font.Height = -13
-        Font.Name = 'Tahoma'
-        Font.Style = []
-        ParentFont = False
-      end
-      object Label27: TLabel
-        Left = 42
-        Top = 102
-        Width = 96
-        Height = 16
-        Alignment = taRightJustify
-        AutoSize = False
-        Caption = 'Olu'#351'turan Id'
         Font.Charset = DEFAULT_CHARSET
         Font.Color = clWhite
         Font.Height = -13
@@ -255,31 +210,13 @@ object Form1: TForm1
         TabOrder = 3
         Visible = False
       end
-      object Edit14: TEdit
-        Left = 144
-        Top = 78
-        Width = 177
-        Height = 21
-        Anchors = [akLeft, akTop, akRight]
-        TabOrder = 5
-        Text = 'Edit1'
-      end
-      object Edit15: TEdit
-        Left = 499
-        Top = 79
-        Width = 342
-        Height = 21
-        Anchors = [akLeft, akTop, akRight]
-        TabOrder = 10
-        Text = 'Edit1'
-      end
       object Edit16: TEdit
         Left = 499
         Top = 56
         Width = 342
         Height = 21
         Anchors = [akLeft, akTop, akRight]
-        TabOrder = 9
+        TabOrder = 6
         Text = 'Edit1'
       end
       object Edit17: TEdit
@@ -288,36 +225,80 @@ object Form1: TForm1
         Width = 342
         Height = 21
         Anchors = [akLeft, akTop, akRight]
-        TabOrder = 8
+        TabOrder = 5
         Text = 'Edit1'
       end
       object SpinEdit1: TSpinEdit
-        Left = 499
-        Top = 109
+        Left = 442
+        Top = 106
         Width = 54
         Height = 22
         MaxValue = 0
         MinValue = 0
-        TabOrder = 11
+        TabOrder = 7
         Value = 1
       end
-      object Edit18: TEdit
-        Left = 143
-        Top = 125
-        Width = 178
-        Height = 21
-        Anchors = [akLeft, akTop, akRight]
-        TabOrder = 7
-        Text = 'Edit1'
+      object BitBtn7: TBitBtn
+        Tag = 2
+        Left = 334
+        Top = 54
+        Width = 102
+        Height = 26
+        Caption = 'G'#252'ncelle'
+        TabOrder = 8
+        OnClick = BitBtn7Click
+        Glyph.Data = {
+          36050000424D3605000000000000360400002800000010000000100000000100
+          08000000000000010000120B0000120B00000001000000000000C384520065A4
+          FF00FAF4F10064A3FF00E9C6AA00C7F7FD00F9F3EF0075B57A00F9F3F000EBBD
+          9B003D7FFF00ECBF9E00EBBC9A005899FF00E9C7AD00F1C8AC003B7DFF00E8C7
+          AC00DDA98000DFAA8200F9F2EF0062A2FF00F7E1D200F9F3EE00509AD90075BB
+          FF007AD6F200C58B5E0091C9F90057A58E005F9FFF00E8C4A900E3EDF5005D9E
+          FF002E6682002B6289007BD4F100B4D2F000E6B59000EACCB300D0A17D004997
+          DA00E3B18C00C4F6FD00B2E3F900A7C5D900DFB49300F8F2ED004B98DB00E0F2
+          FF00EBD2BE00478BFF00EDC09F00D9A47A00DCA57D00EACBB200E9C9B0002466
+          A6005CB3950070A9CC0060A0FF0058A5D800AED3F600FAF5F2006599C90063DF
+          F700E9C3A600E7B79400EAC7AC00ACD2EF00D7A175001A7ABE00EFC6A8005996
+          CC006AB9A4007CD4ED005496FF00B1E6F500C4E0FC004D90FF004C8ABE0079D3
+          EE00E4B28C0077CBE700F7F0EA0068B3FF00D59D7400EBD0BA00EACEB7005AAB
+          FF0054A7FF0074B579005EDCF5006DB8FF0063A3D700D8D8DB00C68C5F00DAD9
+          DB005798FF00E1AE87005C9DFF005DE2F8005A9AFF0078D0ED00E5B48F00E5EF
+          F70071B9FF0079D3F0004284FF00EBD0BB00D49B6F004185C9005BDFF500E9CB
+          B3006BA2D400D19668006CDDF600D8A37800E0AC84004998C500478BC200E9BA
+          9800FAF6F1008BC0E70094C7F9007AB6D50085B1DB00C1EBF700469DD000E9C9
+          AE0061B0FF0064A4FF00C68A5C00E7B79300FAF4F000549AD800AC876B00E2AF
+          8800E9C6AC00A882650090B7D1007ED4EB00B1D8EE00EAC9B00079BDFF0053B2
+          970073B8D400EBBE9D00D1976A00CCD4DC005AE1F7005BE2F7004389AA001843
+          5A00E9BA96006DCAED00C88D5F00FAF6F200499EF400E2B6960061A1FF0055C9
+          E40077BEE700C2F6FD00E5F3FF004F9FDD00EAC9AE005FDCF500D2D5DA00DDA8
+          7E00FBF7F400FFFFFF00FFFFFF00000000000000000000000000000000000000
+          0000000000000000000000000000000000000000000000000000000000000000
+          0000000000000000000000000000000000000000000000000000000000000000
+          0000000000000000000000000000000000000000000000000000000000000000
+          0000000000000000000000000000000000000000000000000000000000000000
+          0000000000000000000000000000000000000000000000000000000000000000
+          0000000000000000000000000000000000000000000000000000000000000000
+          0000000000000000000000000000000000000000000000000000000000000000
+          0000000000000000000000000000000000000000000000000000000000000000
+          0000000000000000000000000000000000000000000000000000000000000000
+          0000000000000000000000000000000000000000000000000000ACACACAC9923
+          503B20ACACACACACACACAC2E5673227C1C6F398B0000000028ACAC462F549831
+          87477778A802083F1BACAC3517322D7D8CA17067185F081460ACACA906576D1D
+          92A341656B29610284ACAC130658AB074A53055C962430959CACAC6386372707
+          5B3A5105A7971AA588ACAC2A7AA6AB8FAB717F4B2B749B5E4069AC689D048A44
+          0E8138918D2C7B3E4E72AC43AA42AB1FAB04AB114DA225A44549AC79AA010315
+          A01E6466629E3D7E808EAC09AA8390196A5D5582595A10AA94ACAC0BAA01033C
+          210D4C4F336C0AAA6EACAC48AAAAAAAAAAAAAAAAAAAAAAAA75ACAC160F34930C
+          9A852652897612369FACACACACACACACACACACACACACACACACAC}
       end
-      object Edit19: TEdit
-        Left = 144
-        Top = 101
-        Width = 177
-        Height = 21
-        Anchors = [akLeft, akTop, akRight]
-        TabOrder = 6
-        Text = 'Edit1'
+      object Memo2: TMemo
+        Left = 499
+        Top = 79
+        Width = 342
+        Height = 67
+        Lines.Strings = (
+          'Memo2')
+        TabOrder = 9
       end
     end
     object Panel5: TPanel
@@ -396,6 +377,7 @@ object Form1: TForm1
         Top = 100
         Width = 130
         Height = 21
+        Visible = False
       end
       object Edit10: TEdit
         Left = 67
@@ -431,11 +413,12 @@ object Form1: TForm1
         Height = 17
         Caption = 'Organizasyondan'
         TabOrder = 3
+        Visible = False
       end
       object ListView1: TListView
         Left = 288
         Top = 33
-        Width = 551
+        Width = 457
         Height = 194
         Anchors = [akLeft, akTop, akRight, akBottom]
         Columns = <
@@ -454,16 +437,8 @@ object Form1: TForm1
           end
           item
             Alignment = taCenter
-            Caption = 'Bilgi Notu'
-            Width = 110
-          end
-          item
-            Alignment = taCenter
-            Caption = 'Id'
-          end
-          item
-            Alignment = taCenter
-            Caption = 'Orgaizer'
+            Caption = 'Tercih'
+            Width = 120
           end>
         ReadOnly = True
         RowSelect = True
@@ -488,6 +463,7 @@ object Form1: TForm1
           0001009B839000000000009E6890000000000009990000000000}
       end
       object BitBtn2: TBitBtn
+        Tag = 1
         Left = 67
         Top = 168
         Width = 190
@@ -541,8 +517,8 @@ object Form1: TForm1
           3E7B1F333677196B8D9797979797979797979797979797979797}
       end
       object BitBtn6: TBitBtn
-        Left = 288
-        Top = 229
+        Left = 635
+        Top = 230
         Width = 110
         Height = 25
         Caption = 'Ki'#351'ileri Temizle'
@@ -632,27 +608,22 @@ object Form1: TForm1
           item
             Alignment = taCenter
             Caption = 'Cal ID'
-            Width = 150
+            Width = 200
           end
           item
             Alignment = taCenter
             Caption = 'Ba'#351'l'#305'k'
-            Width = 200
+            Width = 250
           end
           item
             Alignment = taCenter
             Caption = 'Ba'#351'tar'
-            Width = 110
+            Width = 150
           end
           item
             Alignment = taCenter
             Caption = 'Bittar'
-            Width = 110
-          end
-          item
-            Alignment = taCenter
-            Caption = 'Bilgi Notu'
-            Width = 200
+            Width = 150
           end>
         ReadOnly = True
         RowSelect = True

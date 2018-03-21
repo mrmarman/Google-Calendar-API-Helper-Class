@@ -58,8 +58,9 @@ Type
       attEmail     : String;
       attDispName  : String;
       attComment   : String;
-      attId        : String;
-      attOrganizer : Boolean;
+     //attId        : String;
+    //attOrganizer : Boolean;
+      attResponses : String;
 end;
 
 Type
@@ -80,7 +81,7 @@ Type
 end;
 
 Type
-  TSorguTipi = ( stGET, stPOST, stDELETE, stGET_KEYParam, stPOST_KEYParam, stDELETE_KEYParam );
+  TSorguTipi = ( stGET, stPOST, stDELETE, stGET_KEYParam, stPOST_KEYParam, stDELETE_KEYParam, stPUT_KEYParam );
 
 Type
   TGoogleCal_Helper = Class(TObject)
@@ -132,6 +133,7 @@ Type
     function    CalEventList  : String;
     procedure   CalEventIDs   ( Liste : TStrings );
     function    CalEventEkle  ( aEvent: pCalEventRecord ): String;
+    function    CalEventUpdate( strEventID:String; aEvent: pCalEventRecord ): String;
     function    CalEventSil( aEventId: String ): String;
     function    CalEventFromID(aEventId: String): String;
     function    ParseEvent(strIcerik: String): pCalEventRecord;
@@ -267,8 +269,8 @@ begin
   if Pos('https', aUrl ) > 0  then
   begin // HTTPS eriþim yapýlacak...
         // OpenSSL kütüphaneleri Gerekli.
-        
-(* // SSL Kütüphaneleri lisans sorunu yaratmasýn diye RESOURCE altýndan çýkardým. 
+
+(* // SSL Kütüphaneleri lisans sorunu yaratmasýn diye RESOURCE altýndan çýkardým.
     {$IF CompilerVersion >= 22.0} a := 3; b := 4;  // XE
     {$ELSE}                       a := 1; b := 2;  // D7 = 15.0
     {$IFEND}
@@ -329,7 +331,7 @@ begin
 
   AResponseContent := TStringStream.Create('');
   Try
-    if aType in [stGET_KEYParam, stPOST_KEYParam, stDELETE_KEYParam] then
+    if aType in [stGET_KEYParam, stPOST_KEYParam, stDELETE_KEYParam, stPUT_KEYParam] then
     begin
       IdHttp.Request.CustomHeaders.Values['Authorization'] := 'Bearer' + ' ' + FAccess_Token;
 
@@ -403,6 +405,39 @@ begin
         else begin
           try
             IdHttp.Post( aUrl, slParam, AResponseContent );
+          Except on E : Exception do
+            if Pos('401 Unauthorized', E.Message) > 0
+            then MessageDlg( 'Önce Login Olmalýsýnýz...', mtError, [mbOk], 0 )
+            else InputBox('stPOST_ELSE','Hata', E.Message );
+          End;
+        end;
+      end;
+    stPUT_KEYParam :
+      begin
+        //https://www.googleapis.com/calendar/v3/calendars/calendarId/events/eventId
+        if boolJSON
+        then begin
+          Req_Json      := TStringStream.Create( slParam.Text );
+          try
+            Req_Json.Position := 0;
+            FLog.LoadFromStream( Req_Json );
+            Req_Json.Position := 0;
+            Try
+              IdHttp.Put( aUrl, Req_Json, AResponseContent );
+            Except on E : Exception do
+              if Pos('401 Unauthorized', E.Message) > 0
+              then MessageDlg( 'Önce Login Olmalýsýnýz...', mtError, [mbOk], 0 )
+              else InputBox('stPOST','Hata', E.Message );
+            End;
+          finally
+            Req_Json.Free;
+          end;
+        end
+        else begin
+          Req_Json      := TStringStream.Create( slParam.Text );
+          try
+            IdHttp.Put( aUrl, Req_Json, AResponseContent );
+            Req_Json.Free;
           Except on E : Exception do
             if Pos('401 Unauthorized', E.Message) > 0
             then MessageDlg( 'Önce Login Olmalýsýnýz...', mtError, [mbOk], 0 )
@@ -656,8 +691,8 @@ end;
 
 function TGoogleCal_Helper.CalEventEkle(aEvent: pCalEventRecord ): String;
 const
-  jsonDateFmt   = '  "dateTime": "%.4d-%.2d-%.2dT%.2d:%.2d:%.2d.000Z",';
-  jsonAllDayFmt = '  "date": "%.4d-%.2d-%.2d",';
+  jsonDateFmt   = '  "dateTime": "%.4d-%.2d-%.2dT%.2d:%.2d:00.000"';
+  jsonAllDayFmt = '  "date": "%.4d-%.2d-%.2d"';
 Var
   strEkle  : String;
   slParam  : TStringList;
@@ -669,31 +704,35 @@ begin
     Add( '{'                                          );
     Add( '  "start": {'                                );
 
+    if aEvent.TimeZone <> ''
+    then
+    Add( '  "timeZone": "'+aEvent.TimeZone+'",'        );
+
     if aEvent.boolTumGun then begin
       strEkle := Format( jsonAllDayFmt, [ YearOf(aEvent.BasTar), MonthOf(aEvent.BasTar), DayOf(aEvent.BasTar) ] );
     end else begin
-      strEkle := Format( jsonDateFmt, [ YearOf(aEvent.BasTar), MonthOf(aEvent.BasTar), DayOf(aEvent.BasTar), HourOf(aEvent.BasTar), MinuteOf(aEvent.BasTar), SecondOf(aEvent.BasTar) ] );
+      strEkle := Format( jsonDateFmt, [ YearOf(aEvent.BasTar), MonthOf(aEvent.BasTar), DayOf(aEvent.BasTar), HourOf(aEvent.BasTar), MinuteOf(aEvent.BasTar) ] );
     end;
+
     Add( strEkle                                      );
 
-    if aEvent.TimeZone <> ''
-    then
-    Add( '  "timeZone": "'+aEvent.TimeZone+'"'        );
     Add( ' },'                                        );
     Add( '  "end": {'                                  );
-    if aEvent.boolTumGun then begin
-      strEkle := Format( jsonAllDayFmt, [ YearOf(aEvent.BitTar), MonthOf(aEvent.BitTar), DayOf(aEvent.BitTar) ] );
-    end else begin
-      strEkle := Format( jsonDateFmt,   [ YearOf(aEvent.BitTar), MonthOf(aEvent.BitTar), DayOf(aEvent.BitTar), HourOf(aEvent.BitTar), MinuteOf(aEvent.BitTar), SecondOf(aEvent.BitTar) ] );
-    end;
-    Add( strEkle                                      );
     if aEvent.TimeZone <> ''
     then
-    Add( '  "timeZone": "'+aEvent.TimeZone+'"'        );
+    Add( '  "timeZone": "'+aEvent.TimeZone+'",'        );
+
+    if aEvent.boolTumGun then begin
+      aEvent.BitTar := incDay( aEvent.BitTar, +1 ); // Google 1 gün eksik hesaplýyor, talfisini ekliyoruz. Okurken de çýkartýcaz...
+      strEkle := Format( jsonAllDayFmt, [ YearOf(aEvent.BitTar), MonthOf(aEvent.BitTar), DayOf(aEvent.BitTar) ] );
+    end else begin
+      strEkle := Format( jsonDateFmt,   [ YearOf(aEvent.BitTar), MonthOf(aEvent.BitTar), DayOf(aEvent.BitTar), HourOf(aEvent.BitTar), MinuteOf(aEvent.BitTar) ] );
+    end;
+    Add( strEkle                                      );
     Add( ' },'                                        );
     if aEvent.description <> ''
     then
-    Add( ' "description": "'+ UTF8Encode(aEvent.description)+'",'  );
+    Add( ' "description": "'+ UTF8Encode( StringReplace(aEvent.description, #13#10, '\n', [rfReplaceAll] ) )+'",'  );
     if aEvent.colorId > 0
     then
     Add( ' "colorId": "'+IntToStr(aEvent.colorId)+'",'             );
@@ -708,8 +747,10 @@ begin
     then
     Add( '  "displayName": "'+ UTF8Encode(aEvent.creaDispName)+'",');
     if aEvent.creaEmail <> ''
-    then
+    then begin
     Add( '  "email": "'+ UTF8Encode(aEvent.creaEmail)+'",'         );
+    Add( '  "self": false,'         );
+    end;
     if aEvent.creaId <> ''
     then
     Add( '  "id": "'+ UTF8Encode(aEvent.creaId)+'"'                );
@@ -726,13 +767,13 @@ begin
       Add( '   "displayName": "'+ UTF8Encode( aEvent.Attendees[i].attDispName )+'",' );
       if aEvent.Attendees[i].attComment <> ''
       then
-      Add( '   "comment": "'+ UTF8Encode( aEvent.Attendees[i].attComment )+'",'      );
-      if aEvent.Attendees[i].attId <> ''
-      then
-      Add( '   "id": "'+ UTF8Encode( aEvent.Attendees[i].attId )+'",'                );
-      if aEvent.Attendees[i].attOrganizer
-        then Add( '   "organizer": true'                     )
-        else Add( '   "organizer": false'                    );
+      Add( '   "comment": "'+ UTF8Encode( aEvent.Attendees[i].attComment )+'"'      );
+//      if aEvent.Attendees[i].attId <> ''
+//      then
+//      Add( '   "id": "'+ UTF8Encode( aEvent.Attendees[i].attId )+'",'                );
+//      if aEvent.Attendees[i].attOrganizer
+//        then Add( '   "organizer": true'                     )
+//        else Add( '   "organizer": false'                    );
       Add( '  }'                                             );
 
       if i < high(aEvent.Attendees)
@@ -795,6 +836,117 @@ begin
                                           + FApi_Key )
 end;
 
+function TGoogleCal_Helper.CalEventUpdate( strEventID:String; aEvent: pCalEventRecord): String;
+const
+  jsonDateFmt   = '  "dateTime": "%.4d-%.2d-%.2dT%.2d:%.2d:00.000"';
+  jsonAllDayFmt = '  "date": "%.4d-%.2d-%.2d"';
+Var
+  strEkle  : String;
+  slParam  : TStringList;
+  i : Integer;
+begin
+  slParam := TStringList.Create;
+
+  With slParam do begin
+    Add( '{'                                          );
+    Add( '  "start": {'                                );
+
+    if aEvent.TimeZone <> ''
+    then
+      Add( '  "timeZone": "'+aEvent.TimeZone+'",'        );
+
+    if aEvent.boolTumGun then begin
+      strEkle := Format( jsonAllDayFmt, [ YearOf(aEvent.BasTar), MonthOf(aEvent.BasTar), DayOf(aEvent.BasTar) ] );
+    end else begin
+      strEkle := Format( jsonDateFmt, [ YearOf(aEvent.BasTar), MonthOf(aEvent.BasTar), DayOf(aEvent.BasTar), HourOf(aEvent.BasTar), MinuteOf(aEvent.BasTar) ] );
+    end;
+
+    Add( strEkle                                      );
+    Add( ' },'                                        );
+    Add( '  "end": {'                                  );
+
+    if aEvent.TimeZone <> ''
+    then
+      Add( '  "timeZone": "'+aEvent.TimeZone+'",'        );
+
+    if aEvent.boolTumGun then begin
+      aEvent.BitTar := incDay( aEvent.BitTar, +1 ); // Google 1 gün eksik hesaplýyor, talfisini ekliyoruz. Okurken de çýkartýcaz...
+      strEkle := Format( jsonAllDayFmt, [ YearOf(aEvent.BitTar), MonthOf(aEvent.BitTar), DayOf(aEvent.BitTar) ] );
+    end else begin
+      strEkle := Format( jsonDateFmt,   [ YearOf(aEvent.BitTar), MonthOf(aEvent.BitTar), DayOf(aEvent.BitTar), HourOf(aEvent.BitTar), MinuteOf(aEvent.BitTar) ] );
+    end;
+    Add( strEkle                                      );
+    Add( ' },'                                        );
+    if aEvent.description <> ''
+    then
+      Add( ' "description": "'+ UTF8Encode( StringReplace(aEvent.description, #13#10, '\n', [rfReplaceAll] ) )+'",'  );
+    if aEvent.colorId > 0
+    then
+      Add( ' "colorId": "'+IntToStr(aEvent.colorId)+'",'             );
+    if aEvent.location <> ''
+    then
+      Add( ' "location": "'+ UTF8Encode(aEvent.location) + '",'      );
+    if aEvent.summary <> ''
+    then
+      Add( ' "summary": "'+ UTF8Encode(aEvent.summary) + '",'        );
+
+    Add( ' "creator": {'                                          );
+    if aEvent.creaDispName <> ''
+    then
+      Add( '  "displayName": "'+ UTF8Encode(aEvent.creaDispName)+'",');
+    if aEvent.creaEmail <> ''
+    then
+      Add( '  "email": "'+ UTF8Encode(aEvent.creaEmail)+'",'         );
+    if aEvent.creaId <> ''
+    then
+      Add( '  "id": "'+ UTF8Encode(aEvent.creaId)+'"'                );
+    Add( ' },'                                                    );
+    Add( ' "attendees": ['                                        );
+    for i := low(aEvent.Attendees) to high(aEvent.Attendees) do
+    begin
+      Add( '  {'                                                                    );
+      if aEvent.Attendees[i].attEmail <> ''
+      then
+      Add( '   "email": "'+aEvent.Attendees[i].attEmail+'",'                        );
+      if aEvent.Attendees[i].attDispName <> ''
+      then
+      Add( '   "displayName": "'+ UTF8Encode( aEvent.Attendees[i].attDispName )+'",' );
+      if aEvent.Attendees[i].attComment <> ''
+      then
+      Add( '   "comment": "'+ UTF8Encode( aEvent.Attendees[i].attComment )+'"'      );
+//      if aEvent.Attendees[i].attId <> ''
+//      then
+//      Add( '   "id": "'+ UTF8Encode( aEvent.Attendees[i].attId )+'",'                );
+//      if aEvent.Attendees[i].attOrganizer
+//        then Add( '   "organizer": true'                     )
+//        else Add( '   "organizer": false'                    );
+      Add( '  }'                                             );
+
+      if i < high(aEvent.Attendees)
+        then Add( '  ,'                                      );
+
+      Dispose( aEvent.Attendees[i] ) // Hafýzadan uçurduk
+    end;
+    Add( ' ],'                                               );
+    Add( '"visibility": "default"'                           );
+    Add( '}'                                                    );
+  end;
+
+  Dispose( aEvent ); // Hafýzadan uçurduk
+  try
+    Result := WEBIslemler( stPUT_KEYParam,  FCalendarUri
+                                         +  EncodeURI( FCalendarID )
+                                         + '/events'
+                                         + '/'
+                                         +  strEventID
+                                         //+ '?key='
+                                         //+  EncodeURI( FApi_Key )
+                                         , True, slParam );
+  finally
+    slParam.Free;
+  end;
+end;
+
 function TGoogleCal_Helper.CalEventFromID(aEventId: String): String;
 begin
   Result := WEBIslemler( stGET_KEYParam,  FCalendarUri
@@ -822,20 +974,22 @@ begin
     new( aEvent );
     aEvent.summary      := UTF8Decode( xGoogleCal.AradanSec( strBlok, '"summary": "', '"', False ) );
     aEvent.location     := UTF8Decode( xGoogleCal.AradanSec( strBlok, '"location": "', '"', False ) );
-    aEvent.description  := UTF8Decode( xGoogleCal.AradanSec( strBlok, '"description": "', '"', False ) );
+    aEvent.description  := UTF8Decode(
+      StringReplace( xGoogleCal.AradanSec( strBlok, '"description": "', '"', False ), '\n', #13#10, [rfReplaceAll] )
+       );
 
     str := strBlok;
     xGoogleCal.AradanSec( str, '"start": {', '"date', True );
-    Tar1 := xGoogleCal.AradanSec( str, ': "', '"' , True );
+    Tar1 := xGoogleCal.AradanSec( str, '": "', '"' , True );
     if Pos('T', Tar1) > 0 then
-    begin // DateTime 1111-11-11 11:11
+    begin // DateTime 2018-03-23T17:00:00+03:00
       aEvent.boolTumGun := False;
       Tar2 := Copy(Tar1, 9, 2) + DateSeparator
             + Copy(Tar1, 6, 2) + DateSeparator
             + Copy(Tar1, 1, 4)
             + ' '
             + Copy(Tar1, 12, 2) + TimeSeparator
-            + Copy(Tar1, 15, 2) + TimeSeparator
+            + Copy(Tar1, 15, 2)
     end else
     begin // Date     1111-11-11
       aEvent.boolTumGun := True;
@@ -847,7 +1001,7 @@ begin
 
     str := strBlok;
     xGoogleCal.AradanSec( str, '"end": {', '"date', True );
-    Tar1 := xGoogleCal.AradanSec( str, ': "', '"' , True );
+    Tar1 := xGoogleCal.AradanSec( str, '": "', '"' , True );
     if Pos('T', Tar1) > 0 then
     begin // DateTime
       aEvent.boolTumGun := False;
@@ -856,7 +1010,7 @@ begin
             + Copy(Tar1, 1, 4)
             + ' '
             + Copy(Tar1, 12, 2) + TimeSeparator
-            + Copy(Tar1, 15, 2) + TimeSeparator
+            + Copy(Tar1, 15, 2)
     end else
     begin // Date
       aEvent.boolTumGun := True;
@@ -865,6 +1019,8 @@ begin
             + Copy(Tar1, 1, 4);
     end;
     aEvent.BitTar := StrToDateTime( Tar2 );
+    if aEvent.boolTumGun then // 1 gün eksik hesaplýyor eklemiþizdir. Çýkartýyoruz ...
+       aEvent.BitTar := incDay( aEvent.BitTar, -1 );
 
     str := strBlok;
     xGoogleCal.AradanSec( str, '"attendees":', '[', True );
@@ -875,12 +1031,14 @@ begin
       New(aKisiList);
       aKisiList.attEmail    := xGoogleCal.AradanSec( str, '"email": "',       '"', True  );
       Dummy := Copy( str, 1, Pos( '}', str )-1); // olmayan baþlýk için diðer epostaya sarkmasýn diye
-        aKisiList.attDispName := xGoogleCal.AradanSec( Dummy, '"displayName": "', '"', False );
-        aKisiList.attComment  := xGoogleCal.AradanSec( Dummy, '"comment": "',     '"', False );
-        aKisiList.attId       := xGoogleCal.AradanSec( Dummy, '"id": "',          '"', False );
-        if xGoogleCal.AradanSec( Dummy, '"organizer": "',   '"', False ) = 'true'
-          then aKisiList.attOrganizer := True
-          else aKisiList.attOrganizer := False;
+        aKisiList.attDispName := UTF8Decode( xGoogleCal.AradanSec( Dummy, '"displayName": "', '"', False ) );
+        aKisiList.attComment  := UTF8Decode( xGoogleCal.AradanSec( Dummy, '"comment": "',     '"', False ) );
+        //aKisiList.attId       := UTF8Decode( xGoogleCal.AradanSec( Dummy, '"id": "',          '"', False ) );
+        aKisiList.attResponses:= UTF8Decode( xGoogleCal.AradanSec( Dummy, '"responseStatus": "', '"', False ) );
+
+//        if xGoogleCal.AradanSec( Dummy, '"organizer": ',   '}', False ) = 'true'
+//          then aKisiList.attOrganizer := True
+//          else aKisiList.attOrganizer := False;
       SetLength( aEvent.Attendees, i+1 );
       aEvent.Attendees[i] := aKisiList;
     end;
@@ -895,8 +1053,6 @@ finalization
   FreeAndNil(xGoogleCal);
 
 end.
-
-
 
 
 

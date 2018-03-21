@@ -47,22 +47,15 @@ type
     Label21: TLabel;
     Label22: TLabel;
     Label23: TLabel;
-    Label24: TLabel;
     Label25: TLabel;
-    Label26: TLabel;
-    Label27: TLabel;
     DateTimePicker1: TDateTimePicker;
     DateTimePicker2: TDateTimePicker;
     CheckBox2: TCheckBox;
     DateTimePicker3: TDateTimePicker;
     DateTimePicker4: TDateTimePicker;
-    Edit14: TEdit;
-    Edit15: TEdit;
     Edit16: TEdit;
     Edit17: TEdit;
     SpinEdit1: TSpinEdit;
-    Edit18: TEdit;
-    Edit19: TEdit;
     Panel5: TPanel;
     Label16: TLabel;
     Label17: TLabel;
@@ -84,6 +77,8 @@ type
     BitBtn6: TBitBtn;
     PopupMenu2: TPopupMenu;
     miOlaySil: TMenuItem;
+    BitBtn7: TBitBtn;
+    Memo2: TMemo;
     procedure FormCreate(Sender: TObject);
     procedure CheckBox1Click(Sender: TObject);
     procedure BitBtn1Click(Sender: TObject);
@@ -98,6 +93,7 @@ type
     procedure BitBtn6Click(Sender: TObject);
     procedure PopupMenu2Popup(Sender: TObject);
     procedure ListView2DblClick(Sender: TObject);
+    procedure BitBtn7Click(Sender: TObject);
   private
     procedure PanelReadOnly(boolReadOnly: Boolean);
     procedure OlayJSONParse(strIcerik:String; ListView: TListView );
@@ -180,6 +176,9 @@ begin
     if (self.Components[i] is TDateTimePicker)
       AND ( TDateTimePicker(self.Components[i]).parent.Tag in [4, 5, 6] )
       then TDateTimePicker(self.Components[i]).DateTime := Int(Now);
+    if (self.Components[i] is TMemo)
+      AND ( TMemo(self.Components[i]).parent.Tag in [4, 5, 6] )
+      then TMemo(self.Components[i]).Lines.Text := '';
   end;
 end;
 procedure TForm1.PanelReadOnly( boolReadOnly : Boolean );
@@ -249,11 +248,11 @@ begin
   YeniEvent.TimeZone     := 'GMT+03:00';
   YeniEvent.boolTumGun   :=  CheckBox2.Checked;
   YeniEvent.summary      :=  Edit17.Text;
-  YeniEvent.description  :=  Edit15.Text;
+  YeniEvent.description  :=  Memo2.Lines.Text;
   YeniEvent.location     :=  Edit16.Text;
-  YeniEvent.creaDispName :=  Edit14.Text;
-  YeniEvent.creaEmail    :=  Edit18.Text;
-  YeniEvent.creaId       :=  Edit19.Text;
+  //YeniEvent.creaDispName :=  Edit14.Text;
+  //YeniEvent.creaEmail    :=  Edit18.Text;
+  //YeniEvent.creaId       :=  Edit19.Text;
   YeniEvent.colorId      :=  SpinEdit1.Value;
 
   for i := 0 to ListView1.Items.Count - 1 do
@@ -263,12 +262,15 @@ begin
       Kisi.attEmail    := ListView1.Items[i].SubItems[0];
       Kisi.attDispName := ListView1.Items[i].SubItems[1];
       Kisi.attComment  := ListView1.Items[i].SubItems[2];
-      Kisi.attOrganizer:= ListView1.Items[i].SubItems[3] = 'Evet';
-      Kisi.attId       := IntToStr( High(YeniEvent.Attendees) );
+      //Kisi.attOrganizer:= ListView1.Items[i].SubItems[3] = 'Evet';
+      //Kisi.attId       := IntToStr( High(YeniEvent.Attendees) );
     YeniEvent.Attendees[ High(YeniEvent.Attendees) ] := Kisi;
   end;
 // Paketi Helper Class'a yolluyoruz.
-  xGoogleCal.CalEventEkle( YeniEvent );
+  Case TBitBtn(Sender).Tag of
+  1: xGoogleCal.CalEventEkle  ( YeniEvent );
+  2: xGoogleCal.CalEventUPDATE( ListView2.Selected.SubItems[0], YeniEvent );
+  End;
 end;
 
 procedure TForm1.BitBtn3Click(Sender: TObject);
@@ -308,6 +310,7 @@ Var
 begin
   strGelen := xGoogleCal.CalEventList();
   if strGelen <> '' then Memo1.Lines.Add( strGelen );
+  ListView1.Items.Clear;
   ListView2.Items.Clear;
   OlayJSONParse( strGelen, ListView2 );
   EkraniTemizle();
@@ -317,6 +320,11 @@ procedure TForm1.BitBtn6Click(Sender: TObject);
 begin
   ListView1.Items.Clear;
   BitBtn2.Enabled := ListView1.Items.Count > 0;
+end;
+
+procedure TForm1.BitBtn7Click(Sender: TObject);
+begin
+  BitBtn2Click( BitBtn7 );
 end;
 
 procedure TForm1.CheckBox1Click(Sender: TObject);
@@ -391,35 +399,36 @@ begin
   if ListView2.Selected = nil then Exit;
 
   strIcerik := xGoogleCal.CalEventFromID( ListView2.Selected.SubItems[0] );
+  Memo1.Lines.Text := strIcerik;
   aEvent    := xGoogleCal.ParseEvent( strIcerik );
 
   Edit17.Text               := aEvent.summary;
   Edit16.Text               := aEvent.location;
-  Edit15.Text               := aEvent.description;
-  Edit14.Text               := aEvent.creaDispName;
-  Edit19.Text               := aEvent.creaId;
-  Edit18.Text               := aEvent.creaEmail;
+  Memo2.Lines.Text          := aEvent.description;
+  //Edit14.Text               := aEvent.creaDispName;
+  //Edit19.Text               := aEvent.creaId;
+  //Edit18.Text               := aEvent.creaEmail;
   checkBox2.Checked         := aEvent.boolTumGun;
   DateTimePicker1.DateTime  := Int(aEvent.BasTar);
   DateTimePicker2.DateTime  := Frac(aEvent.BasTar);
   DateTimePicker3.DateTime  := Int(aEvent.BitTar);
   DateTimePicker4.DateTime  := Frac(aEvent.BitTar);
   ListView1.Items.Clear;
-  
+
   for i := low(aEvent.Attendees) to high(aEvent.Attendees) do
   begin
     With ListView1.Items.Add do begin
       SubItems.Add( aEvent.Attendees[i].attEmail     );
       SubItems.Add( aEvent.Attendees[i].attDispName  );
-      SubItems.Add( aEvent.Attendees[i].attComment   );
-      SubItems.Add( aEvent.Attendees[i].attId        );
-      if aEvent.Attendees[i].attOrganizer
-        then SubItems.Add( 'Evet'  )
-        else SubItems.Add( 'Hayýr' );
+      SubItems.Add( aEvent.Attendees[i].attResponses );
+      //if aEvent.Attendees[i].attOrganizer
+      //  then SubItems.Add( 'Evet'  )
+      //  else SubItems.Add( 'Hayýr' );
       Dispose(aEvent.Attendees[i]);
     end;
   end;
   Dispose( aEvent );
+  BitBtn2.Enabled          := ListView1.Items.Count > 0;
 end;
 
 end.
