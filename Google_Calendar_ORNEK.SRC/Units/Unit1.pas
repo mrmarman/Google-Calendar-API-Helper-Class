@@ -79,6 +79,7 @@ type
     miOlaySil: TMenuItem;
     BitBtn7: TBitBtn;
     Memo2: TMemo;
+    BitBtn8: TBitBtn;
     procedure FormCreate(Sender: TObject);
     procedure CheckBox1Click(Sender: TObject);
     procedure BitBtn1Click(Sender: TObject);
@@ -94,10 +95,12 @@ type
     procedure PopupMenu2Popup(Sender: TObject);
     procedure ListView2DblClick(Sender: TObject);
     procedure BitBtn7Click(Sender: TObject);
+    procedure BitBtn8Click(Sender: TObject);
   private
     procedure PanelReadOnly(boolReadOnly: Boolean);
     procedure OlayJSONParse(strIcerik:String; ListView: TListView );
     procedure EkraniTemizle;
+    procedure GoogleCalHazirla( boolINIYukle : boolean  );
     { Private declarations }
   public
     { Public declarations }
@@ -112,9 +115,43 @@ implementation
 
 Uses INIFiles, GoogleCalendar_Helper;
 
-procedure TForm1.FormCreate(Sender: TObject);
+procedure TForm1.GoogleCalHazirla( boolINIYukle : boolean );
 Var
   INI : TINIFile;
+begin
+  if boolINIYukle then begin
+    INI := TINIFile.Create( ChangeFileExt(Application.Exename, '.ini') );
+      Edit1.Text        := INI.ReadString( 'GMAIL', 'GmailLogin', '' );
+      Edit2.Text        := INI.ReadString( 'GMAIL', 'GmailPass',  '' );
+      Edit3.Text        := INI.ReadString( 'API', 'Api_Key',      '' );
+      Edit4.Text        := INI.ReadString( 'API', 'Client_Id',    '' );
+      Edit5.Text        := INI.ReadString( 'API', 'Client_Secret','' );
+      Edit6.Text        := INI.ReadString( 'API', 'Scopes',       '' );
+      Edit7.Text        := INI.ReadString( 'API', 'Auth_Uri',     '' );
+      Edit8.Text        := INI.ReadString( 'API', 'Token_Uri',    '' );
+      Edit9.Text        := INI.ReadString( 'API', 'Redirect_Uris','' );
+      CheckBox1.Checked := INI.ReadBool  ( 'APPLICATION', 'DebugMode', False );
+    INI.Free;
+  end;
+
+    With xGoogleCal do begin
+      Api_Key       := Edit3.Text;
+      Client_Id     := Edit4.Text;
+      Client_Secret := Edit5.Text;
+      Scopes        := Edit6.Text;
+      Auth_Uri      := Edit7.Text;
+      Token_Uri     := Edit8.Text;
+      Redirect_Uris := Edit9.Text;
+      CalendarID    := Edit1.Text; // 'delphicanapi@gmail.com'
+    end;
+  xGoogleCal.Log           := Memo1.Lines;
+  xGoogleCal.DebugMode     := CheckBox1.Checked; // Explorer penceresi açýk kalsýn vs.
+  xGoogleCal.LoginGmail    := Edit1.Text;
+  xGoogleCal.LoginPass     := Edit2.Text;
+end;
+
+procedure TForm1.FormCreate(Sender: TObject);
+Var
   i   : Integer;
 begin
   PanelReadOnly(True);
@@ -127,41 +164,15 @@ begin
   DateTimePicker3.DateTime := INT(now);
   DateTimePicker4.DateTime := INT(now);
 
-
   Edit2.PasswordChar := '*';
-  INI := TINIFile.Create( ChangeFileExt(Application.Exename, '.ini') );
-    Edit1.Text        := INI.ReadString( 'GMAIL', 'GmailLogin', '' );
-    Edit2.Text        := INI.ReadString( 'GMAIL', 'GmailPass',  '' );
-    Edit3.Text        := INI.ReadString( 'API', 'Api_Key',      '' );
-    Edit4.Text        := INI.ReadString( 'API', 'Client_Id',    '' );
-    Edit5.Text        := INI.ReadString( 'API', 'Client_Secret','' );
-    Edit6.Text        := INI.ReadString( 'API', 'Scopes',       '' );
-    Edit7.Text        := INI.ReadString( 'API', 'Auth_Uri',     '' );
-    Edit8.Text        := INI.ReadString( 'API', 'Token_Uri',    '' );
-    Edit9.Text        := INI.ReadString( 'API', 'Redirect_Uris','' );
-    CheckBox1.Checked := INI.ReadBool  ( 'APPLICATION', 'DebugMode', False );
-  INI.Free;
-
-    With xGoogleCal do begin
-      Api_Key       := Edit3.Text;
-      Client_Id     := Edit4.Text;
-      Client_Secret := Edit5.Text;
-      Scopes        := Edit6.Text;
-      Auth_Uri      := Edit7.Text;
-      Token_Uri     := Edit8.Text;
-      Redirect_Uris := Edit9.Text;
-      CalendarID    := Edit1.Text; // 'delphicanapi@gmail.com'
-    end;
 
   Memo1.Lines.Clear;
-  xGoogleCal.Log           := Memo1.Lines;
-  xGoogleCal.DebugMode     := CheckBox1.Checked; // Explorer penceresi açýk kalsýn vs.
-  xGoogleCal.LoginGmail    := Edit1.Text;
-  xGoogleCal.LoginPass     := Edit2.Text;
   ListView1.PopupMenu      := PopupMenu1;
   ListView2.PopupMenu      := PopupMenu2;
   self.Position            := poDesktopCenter;
 //self.WindowState := wsMaximized;
+
+  GoogleCalHazirla( true );
 end;
 
 procedure TForm1.EkraniTemizle();
@@ -216,6 +227,10 @@ end;
 
 procedure TForm1.BitBtn1Click(Sender: TObject);
 begin
+  // Güncel bilgilerler ile
+  GoogleCalHazirla( false );
+  PanelReadOnly(True);
+
   xGoogleCal.GoogleOAUTH_01();
   if xGoogleCal.AccessToken <> '' then
   begin
@@ -325,6 +340,42 @@ end;
 procedure TForm1.BitBtn7Click(Sender: TObject);
 begin
   BitBtn2Click( BitBtn7 );
+end;
+
+procedure TForm1.BitBtn8Click(Sender: TObject);
+Var
+  APIClientInfo: pAPIClientInfo;
+  strJSON      : String;
+begin
+  With Dialogs.TOpenDialog.Create(nil) do
+  begin
+    InitialDir := ExtractFilePath( Application.ExeName );
+    Filter     := 'JSON File *.json|*.JSON|Tüm Dosyalar|*.*';
+    Try
+      if Execute then
+      begin
+        With TStringList.Create do begin
+          Try
+            LoadFromFile( FileName );
+            strJSON := Text;
+          Finally
+            Free;
+          End;
+        end;
+        APIClientInfo := xGoogleCal.APIClientInfo( strJSON );
+        if APIClientInfo <> nil then begin
+          Edit4.Text := APIClientInfo.Client_Id;
+          Edit5.Text := APIClientInfo.Client_Secret;
+          Edit7.Text := APIClientInfo.Auth_Uri;
+          Edit8.Text := APIClientInfo.Token_Uri;
+          Edit9.Text := APIClientInfo.Redirect_Uris;
+          Dispose( APIClientInfo ); // Hafýzaya ayrýlan kýsmý boþalttýk...
+        end;
+      end;
+    Finally
+      Free;
+    End;
+  end;
 end;
 
 procedure TForm1.CheckBox1Click(Sender: TObject);

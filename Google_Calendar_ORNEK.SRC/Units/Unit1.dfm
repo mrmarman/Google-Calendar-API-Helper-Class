@@ -810,13 +810,13 @@ object Form1: TForm1
     Left = 8
     Top = 167
     Width = 297
-    Height = 267
+    Height = 315
     Color = 4210816
     ParentBackground = False
     TabOrder = 1
     DesignSize = (
       297
-      267)
+      315)
     object Label4: TLabel
       Left = 6
       Top = 8
@@ -832,7 +832,7 @@ object Form1: TForm1
     end
     object Label5: TLabel
       Left = 24
-      Top = 32
+      Top = 34
       Width = 90
       Height = 16
       Alignment = taRightJustify
@@ -847,7 +847,7 @@ object Form1: TForm1
     end
     object Label6: TLabel
       Left = 24
-      Top = 59
+      Top = 131
       Width = 90
       Height = 16
       Alignment = taRightJustify
@@ -862,7 +862,7 @@ object Form1: TForm1
     end
     object Label8: TLabel
       Left = 24
-      Top = 88
+      Top = 160
       Width = 90
       Height = 16
       Alignment = taRightJustify
@@ -877,7 +877,7 @@ object Form1: TForm1
     end
     object Label9: TLabel
       Left = 24
-      Top = 115
+      Top = 59
       Width = 90
       Height = 16
       Alignment = taRightJustify
@@ -892,7 +892,7 @@ object Form1: TForm1
     end
     object Label10: TLabel
       Left = 24
-      Top = 144
+      Top = 187
       Width = 90
       Height = 16
       Alignment = taRightJustify
@@ -907,7 +907,7 @@ object Form1: TForm1
     end
     object Label11: TLabel
       Left = 24
-      Top = 171
+      Top = 214
       Width = 90
       Height = 16
       Alignment = taRightJustify
@@ -922,7 +922,7 @@ object Form1: TForm1
     end
     object Label12: TLabel
       Left = 24
-      Top = 198
+      Top = 241
       Width = 90
       Height = 16
       Alignment = taRightJustify
@@ -937,7 +937,7 @@ object Form1: TForm1
     end
     object Edit3: TEdit
       Left = 128
-      Top = 31
+      Top = 33
       Width = 140
       Height = 21
       Anchors = [akLeft, akTop, akRight]
@@ -946,7 +946,7 @@ object Form1: TForm1
     end
     object Edit4: TEdit
       Left = 128
-      Top = 58
+      Top = 130
       Width = 140
       Height = 21
       Anchors = [akLeft, akTop, akRight]
@@ -955,7 +955,7 @@ object Form1: TForm1
     end
     object Edit5: TEdit
       Left = 128
-      Top = 87
+      Top = 159
       Width = 140
       Height = 21
       Anchors = [akLeft, akTop, akRight]
@@ -964,7 +964,7 @@ object Form1: TForm1
     end
     object Edit6: TEdit
       Left = 128
-      Top = 114
+      Top = 58
       Width = 140
       Height = 21
       Anchors = [akLeft, akTop, akRight]
@@ -973,7 +973,7 @@ object Form1: TForm1
     end
     object Edit7: TEdit
       Left = 128
-      Top = 143
+      Top = 186
       Width = 140
       Height = 21
       Anchors = [akLeft, akTop, akRight]
@@ -982,7 +982,7 @@ object Form1: TForm1
     end
     object Edit8: TEdit
       Left = 128
-      Top = 170
+      Top = 213
       Width = 140
       Height = 21
       Anchors = [akLeft, akTop, akRight]
@@ -991,7 +991,7 @@ object Form1: TForm1
     end
     object Edit9: TEdit
       Left = 128
-      Top = 197
+      Top = 240
       Width = 140
       Height = 21
       Anchors = [akLeft, akTop, akRight]
@@ -999,10 +999,10 @@ object Form1: TForm1
       Text = 'Edit2'
     end
     object BitBtn1: TBitBtn
-      Left = 84
-      Top = 224
-      Width = 129
-      Height = 38
+      Left = 79
+      Top = 267
+      Width = 140
+      Height = 41
       Anchors = [akTop]
       Caption = 'OAuth 2.0'
       TabOrder = 7
@@ -1051,19 +1051,72 @@ object Form1: TForm1
         023D17265F9B429D9D9D9D9D9D2A0956124B60971A44409D9D9D9D9D9D433F39
         7C0D7A024C0B219D9D9D9D9D9D4F635C5E101C519935229D9D9D}
     end
+    object BitBtn8: TBitBtn
+      Left = 128
+      Top = 101
+      Width = 140
+      Height = 25
+      Anchors = [akTop]
+      Caption = 'JSON'#39'dan AL'
+      TabOrder = 8
+      OnClick = BitBtn8Click
+      Glyph.Data = {
+        36050000424D3605000000000000360400002800000010000000100000000100
+        08000000000000010000120B0000120B00000001000000000000F8DCC200F8F3
+        ED00FDE7D600BC6B3600CA905500FDFBFA00F7B24F00FBBE6500FAF3EB00FCE3
+        CD00FBE1C900EAB57100FAE0C700BC6A3600F7B35200FADFC700FCBE6400FAF2
+        EA00BB6A3500F6EADC00FDFBF800E8AA6A00F7F2EC00FAE0C800C7804500FCF8
+        F400F9E0C800DC986B00FBE2CB00CA925A00DC966900D5A88400E5A45800FFD6
+        9500C8844800FCE2CD00E9B27500C8864B00FCF9F500FCE6CD00FCE4CF00ECB6
+        6500FEE8D600ECB26500F9DDC400F8F2EC00E2B68400D7814000F6DABD00EEB6
+        9400FFD8A000E0926000FEFEFD00C8874C00EFBA9300F9F5F100C6864C00E7A8
+        6800F4D5B700F9DDC300FFD49300C77E4400E2C0AA00CF9D6900FBE3CE00F8F4
+        EE00CA8D4F00E59D5C00FAF4ED00FBE0C900FEE8D800FDFAF700FBBD6300FBE4
+        D000FDC26E00FBE2C900E1B07D00F2D8C400FBE0C800E3975F00F7ECDF00E39B
+        5600E8A75C00E5A05D00E08C4C00FBDDC500E6A25A00FCE6D400FCE2CE00F7ED
+        E300F5EFE900DE984900FFD79E00BD6E3B00E9AB6100C37A4D00ECBB7600C98F
+        5500E8A66300C88D5100FADFC600FCBC6200C88D5200FBE1CB00F8DBC100F6EB
+        DE00FAE1CA00ECB26900E8AC6000FDE5D300F9DEC400F9DAC100FBBC6100F8F4
+        F000CC945B00FCE2CC00CA8B6300FBE1C800FFD69600F9DBC300FEE8D700FFD7
+        9800C1743C00F6AD5000F6D9BC00FCF7F300C2774000E39B5D00FCBD6700C37C
+        4200E9B16E00FDBF6800F5D6BB00F2CFB400C3804800CB905500BC6B3700F9DF
+        C500E1915800FFFBF800CA915500FBF7F300F7B45600E8CEB900DDB19000FADB
+        C500E8AE5F00E2894100F3D4B500F6D1B300F6D8B400FFD59400FAF4EF00E3C2
+        AE00C57C4D00EAAE6000C0714000E8A76100E5A36500FCBD6200FCF4EF00F4D6
+        B800FBF7F400ECB87900FDF6F000F8F4ED00FAE5C900FFD69B00F4E9DF00E2B2
+        7D00BB693500F1D2B300D7AA7C00FBE3CD00EAAC6700E6A65A00C37A4100FBF7
+        F200F5D6BA00EBB67200FCBE6000F6D8BB00FAF6F200CC8D6600F2E6D700D2A2
+        7400E2964F00F7B25100F9DAC400F8EFE600F8F2EB00BD6C3700F5EBDF00E49D
+        5800F6EADE00F9D8C300FCE3CF00FFFFFF000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000C5C53EB79C03
+        03030D0D1212AA5D7499C5C59ABE5069C213130808117D19345FC5C57EC08380
+        0710109F4870B4651488C5C581594A325CA7797621973C07A2BFC5C53D33548E
+        BA937B0E0EBB0606267AC5A02F9E8A6D43394FBC5873457547B08556157FC302
+        775315513123670AB1186CA3204D2A780295AF24C1170F6411223A9B0B629146
+        555E0B52360C3B004425C5A45BB39D022B60AE6F0F0030B59835C5C542829257
+        296B6E17008494AB7138C5C563BDC44928096A2C7CA8168D5A86C5C566370940
+        AD1C1A00B21427A62E1FC5C51DB60C0A4B4E8968A18B964C1E05C5C5B90141A5
+        0101012D16B8A91B05C5C5C58FAC720404048C87613F9005C5C5}
+    end
   end
   object Panel3: TPanel
     Left = 8
-    Top = 440
+    Top = 488
     Width = 297
-    Height = 213
+    Height = 165
     Anchors = [akLeft, akTop, akRight, akBottom]
     Color = 10440704
     ParentBackground = False
     TabOrder = 2
     DesignSize = (
       297
-      213)
+      165)
     object Label7: TLabel
       Left = 6
       Top = 8
@@ -1088,12 +1141,13 @@ object Form1: TForm1
       Left = 3
       Top = 33
       Width = 290
-      Height = 176
+      Height = 128
       Anchors = [akLeft, akTop, akRight, akBottom]
       Lines.Strings = (
         'Memo1')
       ScrollBars = ssBoth
       TabOrder = 0
+      ExplicitHeight = 176
     end
     object CheckBox1: TCheckBox
       Left = 124

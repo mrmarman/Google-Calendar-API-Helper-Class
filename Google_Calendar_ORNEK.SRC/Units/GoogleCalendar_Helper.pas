@@ -40,7 +40,7 @@
 {                                                                           }
 {                                                                           }
 {***************************************************************************}
-
+// {$DEFINE SSL_DLLs_inResourceMode}
 unit GoogleCalendar_Helper;
 
 interface
@@ -51,6 +51,19 @@ Uses
     Windows, Forms, Graphics, Controls, GifImg, Dialogs, SysUtils, Classes, Variants,
     ShellApi, SHDocVw, DateUtils, MSHTML, ComObj,
     IdHttp, IdGlobal, IdSSLOpenSSL, IdAntiFreeze, IdThread;
+
+Type
+  pAPIClientInfo = ^tAPIClientInfo;
+  tAPIClientInfo = Record
+      Api_Key                      : String;
+      Client_Id                    : String;
+      Project_Id                   : String;
+      Client_Secret                : String;
+      Scopes                       : String;
+      Auth_Uri                     : String;
+      Token_Uri                    : String;
+      Redirect_Uris                : String;
+end;
 
 Type
   pAttendeesRecord = ^tAttendeesRecord;
@@ -138,6 +151,7 @@ Type
     function    CalEventFromID(aEventId: String): String;
     function    ParseEvent(strIcerik: String): pCalEventRecord;
     function    AradanSec(var strIcerik: String; strBas, strSon: String; boolTrim:boolean=false ): string;
+    function    APIClientInfo( strJSON:String ): pAPIClientInfo;
   end;
 
 type
@@ -154,9 +168,11 @@ Var
 
 implementation
 
-// {$R RES\RES.RES} // SSL DLL'leri Resource olarak saklandýðýnda lazým...
+{$IFDEF SSL_DLLs_inResourceMode}
+   {$R RES\RES.RES} // SSL DLL'leri Resource olarak saklandýðýnda lazým...
                     // Lisans sorunu olmasýn diye projeden çýkardým....
                     // OpenSSL kütüphanesi sonuçta nette her yerde var.
+{$ENDIF}
 
 { TIdHTTP } // DoRequest() TIdHttp sýnýfýnýn "Private" alanda olduðundan
             // bu þekilde kullanabildik. Public yeni bir procedure elde ettik.
@@ -256,12 +272,38 @@ function TGoogleCal_Helper.WEBIslemler( aType: TSorguTipi; aUrl : String; boolJS
     TempDir := GetTempPath(MAX_PATH, PChar(Result));
     SetLength(Result, TempDir);
   end;
+
+  function IsFileInUse(fName: string) : boolean;
+  var
+    HFileRes: HFILE;
+  begin
+    Result := False;
+    if not FileExists(fName) then begin
+      Exit;
+    end;
+
+    HFileRes := CreateFile(PChar(fName)
+      ,GENERIC_READ or GENERIC_WRITE
+      ,0
+      ,nil
+      ,OPEN_EXISTING
+      ,FILE_ATTRIBUTE_NORMAL
+      ,0);
+
+    Result := (HFileRes = INVALID_HANDLE_VALUE);
+
+    if not(Result) then begin
+      CloseHandle(HFileRes);
+    end;
+  end;
 Var
   OpenSSL          : TIdSSLIOHandlerSocketOpenSSL;
   IdHttp           : TIdHttp;
   AResponseContent : TStringStream;
   Req_Json         : TStream;
-//a,b : Integer;
+{$IFDEF SSL_DLLs_inResourceMode}
+  a,b : Integer;
+{$ENDIF}
 begin
   Result := '';
   if (aType = stPost) and (slParam = nil) then Exit;
@@ -270,10 +312,12 @@ begin
   begin // HTTPS eriþim yapýlacak...
         // OpenSSL kütüphaneleri Gerekli.
 
-(* // SSL Kütüphaneleri lisans sorunu yaratmasýn diye RESOURCE altýndan çýkardým.
+{$IFDEF SSL_DLLs_inResourceMode}
+ // SSL Kütüphaneleri lisans sorunu yaratmasýn diye RESOURCE altýndan çýkardým.
     {$IF CompilerVersion >= 22.0} a := 3; b := 4;  // XE
     {$ELSE}                       a := 1; b := 2;  // D7 = 15.0
     {$IFEND}
+      if NOT IsFileInUse( GetTempDir + 'ssleay32.dll' ) then
       With TResourceStream.Create(HInstance, Format('ssl_%.2d', [a]), RT_RCDATA) do
       begin
         Try
@@ -285,6 +329,7 @@ begin
       end;
 
     //if NOT FileExists(GetTempDir + 'libeay32.dll') then
+      if NOT IsFileInUse( GetTempDir + 'libeay32.dll' ) then
       With TResourceStream.Create(HInstance, Format('ssl_%.2d', [b]), RT_RCDATA) do
       begin
         Try
@@ -300,7 +345,8 @@ begin
 
  // SSL DLL'lerini RES içinden TempDir'e aldýk...
     SetDllDirectory( StringToOLEStr(GetTempDir) );
-*)
+{$ENDIF}
+
 
   end;
 
@@ -965,7 +1011,17 @@ Var
   CId       : String;
   Tar1, Tar2: String;
   i         : Integer;
+  cDateSep, cTimeSep : Char;
 begin
+  {$IF CompilerVersion >= 22.0}
+    cDateSep := FormatSettings.DateSeparator;
+    cTimeSep := FormatSettings.TimeSeparator;
+  {$ELSE}
+    // D7 = 15.0
+    cDateSep := DateSeparator;
+    cTimeSep := TimeSeparator;
+  {$IFEND}
+
   Result := nil;
   strBlok := strIcerik;
   if pos('"id": "', strBlok) > 0 then
@@ -984,17 +1040,17 @@ begin
     if Pos('T', Tar1) > 0 then
     begin // DateTime 2018-03-23T17:00:00+03:00
       aEvent.boolTumGun := False;
-      Tar2 := Copy(Tar1, 9, 2) + DateSeparator
-            + Copy(Tar1, 6, 2) + DateSeparator
+      Tar2 := Copy(Tar1, 9, 2) + cDateSep
+            + Copy(Tar1, 6, 2) + cDateSep
             + Copy(Tar1, 1, 4)
             + ' '
-            + Copy(Tar1, 12, 2) + TimeSeparator
+            + Copy(Tar1, 12, 2) + cTimeSep
             + Copy(Tar1, 15, 2)
     end else
     begin // Date     1111-11-11
       aEvent.boolTumGun := True;
-      Tar2 := Copy(Tar1, 9, 2) + DateSeparator
-            + Copy(Tar1, 6, 2) + DateSeparator
+      Tar2 := Copy(Tar1, 9, 2) + cDateSep
+            + Copy(Tar1, 6, 2) + cDateSep
             + Copy(Tar1, 1, 4);
     end;
     aEvent.BasTar := StrToDateTime( Tar2 );
@@ -1005,17 +1061,17 @@ begin
     if Pos('T', Tar1) > 0 then
     begin // DateTime
       aEvent.boolTumGun := False;
-      Tar2 := Copy(Tar1, 9, 2) + DateSeparator
-            + Copy(Tar1, 6, 2) + DateSeparator
+      Tar2 := Copy(Tar1, 9, 2) + cDateSep
+            + Copy(Tar1, 6, 2) + cDateSep
             + Copy(Tar1, 1, 4)
             + ' '
-            + Copy(Tar1, 12, 2) + TimeSeparator
+            + Copy(Tar1, 12, 2) + cTimeSep
             + Copy(Tar1, 15, 2)
     end else
     begin // Date
       aEvent.boolTumGun := True;
-      Tar2 := Copy(Tar1, 9, 2) + DateSeparator
-            + Copy(Tar1, 6, 2) + DateSeparator
+      Tar2 := Copy(Tar1, 9, 2) + cDateSep
+            + Copy(Tar1, 6, 2) + cDateSep
             + Copy(Tar1, 1, 4);
     end;
     aEvent.BitTar := StrToDateTime( Tar2 );
@@ -1043,6 +1099,26 @@ begin
       aEvent.Attendees[i] := aKisiList;
     end;
     Result := aEvent;
+  end;
+end;
+
+function TGoogleCal_Helper.APIClientInfo(strJSON: String): pAPIClientInfo;
+Var
+  aAPIClientInfo : pAPIClientInfo;
+  strBlok        : String;
+begin
+  Result := nil;
+  strBlok := strJSON;
+  if pos('"client_id":"', strBlok) > 0 then
+  begin // JSON Doðru (varsayalým) :)
+    New( aAPIClientInfo );
+    aAPIClientInfo.Client_Id     := xGoogleCal.AradanSec( strBlok, '"client_id":"',      '"', False );
+    aAPIClientInfo.Project_Id    := xGoogleCal.AradanSec( strBlok, '"project_id":"',     '"', False );
+    aAPIClientInfo.Auth_Uri      := xGoogleCal.AradanSec( strBlok, '"auth_uri":"',       '"', False );
+    aAPIClientInfo.Token_Uri     := xGoogleCal.AradanSec( strBlok, '"token_uri":"',      '"', False );
+    aAPIClientInfo.Client_Secret := xGoogleCal.AradanSec( strBlok, '"client_secret":"',  '"', False );
+    aAPIClientInfo.Redirect_Uris := xGoogleCal.AradanSec( strBlok, '"redirect_uris":["', '"', False );
+    Result := aAPIClientInfo;
   end;
 end;
 
