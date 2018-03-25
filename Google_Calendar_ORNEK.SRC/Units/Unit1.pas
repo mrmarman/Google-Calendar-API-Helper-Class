@@ -35,7 +35,7 @@ type
     Label11: TLabel;
     Edit9: TEdit;
     Label12: TLabel;
-    BitBtn1: TBitBtn;
+    BitBtn_OAuth: TBitBtn;
     PopupMenu1: TPopupMenu;
     miSeciliKisiSil: TMenuItem;
     Panel7: TPanel;
@@ -88,7 +88,7 @@ type
     ImageList1: TImageList;
     procedure FormCreate(Sender: TObject);
     procedure CheckBox1Click(Sender: TObject);
-    procedure BitBtn1Click(Sender: TObject);
+    procedure BitBtn_OAuthClick(Sender: TObject);
     procedure BitBtn2Click(Sender: TObject);
     procedure CheckBox2Click(Sender: TObject);
     procedure PopupMenu1Popup(Sender: TObject);
@@ -104,6 +104,7 @@ type
     procedure BitBtn8Click(Sender: TObject);
     procedure DateTimePicker5Change(Sender: TObject);
   private
+    procedure OnGoogleCalAuthTimeOut(Sender: TObject);                    
     procedure PanelReadOnly(boolReadOnly: Boolean);
     procedure OlayJSONParse(strIcerik:String; ListView: TListView );
     procedure EkraniTemizle( boolTarihBugunOlsun: Boolean = false );
@@ -151,10 +152,13 @@ begin
       Redirect_Uris := Edit9.Text;
       CalendarID    := Edit1.Text; // 'delphicanapi@gmail.com'
     end;
-  xGoogleCal.Log           := Memo1.Lines;
-  xGoogleCal.DebugMode     := CheckBox1.Checked; // Explorer penceresi açýk kalsýn vs.
-  xGoogleCal.LoginGmail    := Edit1.Text;
-  xGoogleCal.LoginPass     := Edit2.Text;
+// Login 401 hatasý alýndýðýnda tetiklenecek Event Procedure
+   xGoogleCal.OnAuthTimeOut := OnGoogleCalAuthTimeOut;
+
+   xGoogleCal.Log           := Memo1.Lines;
+   xGoogleCal.DebugMode     := CheckBox1.Checked; // Explorer penceresi açýk kalsýn vs.
+   xGoogleCal.LoginGmail    := Edit1.Text;
+   xGoogleCal.LoginPass     := Edit2.Text;
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);
@@ -207,12 +211,14 @@ begin
     Panel6.Color   := clGray;
     Panel7.Color   := clGray;
     Panel7.Enabled := False; // OAuth olana kadar giriþ yapýlmasýn.
+    BitBtn_OAuth.Enabled := True;
   end else begin
     Panel4.Color   := $009F5000;
     Panel5.Color   := $009F5000;
     Panel6.Color   := $009F5000;
     Panel7.Color   := clGreen;
     Panel7.Enabled := True;
+    BitBtn_OAuth.Enabled := False;
   end;
 
   for i := 0 to self.ComponentCount - 1 do
@@ -230,7 +236,7 @@ begin
   BitBtn2.Enabled          := ListView1.Items.Count > 0;
 end;
 
-procedure TForm1.BitBtn1Click(Sender: TObject);
+procedure TForm1.BitBtn_OAuthClick(Sender: TObject);
 begin
   // Güncel bilgilerler ile
   GoogleCalHazirla( false );
@@ -461,6 +467,11 @@ begin
       SubItems.Add( Bilgi );
     end;
   end; // While
+end;
+
+procedure TForm1.OnGoogleCalAuthTimeOut(Sender: TObject);
+begin
+  PanelReadOnly( True );
 end;
 
 procedure TForm1.ListView2DblClick(Sender: TObject);

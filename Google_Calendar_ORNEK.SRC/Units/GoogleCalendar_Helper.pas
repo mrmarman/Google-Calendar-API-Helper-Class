@@ -31,9 +31,22 @@
 {                                                                           }
 {  xGoogleCal.Log           := Memo1.Lines; // LOG Kaydý Lazým olursa       }
 {                                                                           }
+{ (2) Formunuzun Private kýsmýna aþaðýdaki tanýmý ekleyiniz...              }
+{                                                                           }
+{   Private                                                                 }
+{     procedure OnGoogleCalAuthTimeOut(Sender: TObject);                    }
+     { Private declarations }
+{                                                                           }
+{ (3) Bu procedure içinde de ilgili satýrlarý ekleyin veya yönlendiriniz.   }
+{   procedure TForm1.OnGoogleCalAuthTimeOut(Sender: TObject);               }
+{   begin                                                                   }
+{   // Tekrar OAuth 2.0 operasyonu                                          }
+{      GoogleOAUTH_01();                                                    }
+{   end;                                                                    }
+{                                                                           }
+{***************************************************************************}
 {  Üzerinde deðiþiklik yapmak serbesttir ancak lütfen bu etiket bloðu       }
 {  içine yaptýðýnýz deðiþikliði ve künyenizi yazmayý ihmal etmeyiniz.       }
-{                                                                           }
 {***************************************************************************}
 {  Deðiþikliði Yapan,  Yapýlan Ekleme/Deðiþiklik bilgisi :                  }
 {                                                                           }
@@ -49,8 +62,15 @@ Uses
               // Sorununa kökten çözüm oluyordu...
               // Ancak bilgisayarlarda "Borlndmm.dll" ihtiyacý doðuyor ondan kaldýrdým.
     Windows, Forms, Graphics, Controls, GifImg, Dialogs, SysUtils, Classes, Variants,
-    ShellApi, SHDocVw, DateUtils, MSHTML, ComObj,
+    ShellApi, SHDocVw, DateUtils, MSHTML, ComObj, Messages,
     IdHttp, IdGlobal, IdSSLOpenSSL, IdAntiFreeze, IdThread;
+
+const
+  wm_Auth20_TimeOut = WM_USER + 1; // user-defined message
+
+
+Type
+  TOnCalAuthTimeOut = procedure(Sender: TObject) of object;
 
 Type
   pAPIClientInfo = ^tAPIClientInfo;
@@ -101,6 +121,7 @@ Type
 Type
   TGoogleCal_Helper = Class(TObject)
   private
+    FOnNotificationGonder           : TOnCalAuthTimeOut;
     Const
       FCalendarUri  = 'https://www.googleapis.com/calendar/v3/calendars/';
     Var
@@ -112,7 +133,6 @@ Type
       Ftoken_uri                    : String;
       Fredirect_uris                : String;
 
-      FAuth20_Code                  : String;
       FLog                          : TStrings;
       FAccess_Token                 : String;
       FExpires_In                   : String;
@@ -122,13 +142,15 @@ Type
       FLoginGmail                   : string;
       FLoginPass                    : string;
       FDebugMode                    : boolean;
-
     function  EncodeURI(const ASrc: string): UTF8String;
-    function  WEBIslemler( aType: TSorguTipi; aUrl : String; boolJSON:boolean = false; slParam: TStringList = nil ): String;
+    function  WEBIslemler( aType: TSorguTipi; aUrl : String; boolJSON:boolean = false; slParam: TStringList = nil; boolIcIsler:Boolean=false ): String;
     procedure LOGla( strIcerik: String );
   public
+      FAuth20_Code                  : String;
     constructor Create;
     destructor  Destroy; Override;
+    property    OnAuthTimeOut : TOnCalAuthTimeOut read FOnNotificationGonder write FOnNotificationGonder;
+    procedure   AUTHRefreshNotifyProc;
     function    GoogleOAUTH_01: string;
     function    GoogleOAUTH_02: string;
     property    CalendarID    : string read FCalendarID Write FCalendarID;
@@ -144,16 +166,18 @@ Type
     property    DebugMode     : boolean read FDebugMode Write FDebugMode;
     function    ReferansKontol: String;
     property    Log           : TStrings read FLog Write FLog;
+    function    APIClientInfo( strJSON:String ): pAPIClientInfo;
     property    AccessToken   : string read FAccess_Token;
+
     function    CalEventList  ( boolDeleted:boolean=false; aBasTar:TDateTime=0; aBitTar: TDateTime=0; aTimeZone:String='+03:00' ): String;
     procedure   CalEventIDs   ( Liste : TStrings; aBasTar:TDateTime=0; aBitTar: TDateTime=0; boolDeleted:boolean=false );
     function    CalEventEkle  ( aEvent: pCalEventRecord ): String;
     function    CalEventUpdate( strEventID:String; aEvent: pCalEventRecord ): String;
     function    CalEventSil( aEventId: String ): String;
-    function    CalEventFromID(aEventId: String): String;
+    function    CalEventFromID( aEventId: String; boolIcIsler:boolean=false ): String;
+    function    CalEventKisiGuncelle( aEventID, aEmail, aName, aComment: String; boolEkle:boolean ): String;
     function    ParseEvent(strIcerik: String): pCalEventRecord;
     function    AradanSec(var strIcerik: String; strBas, strSon: String; boolTrim:boolean=false ): string;
-    function    APIClientInfo( strJSON:String ): pAPIClientInfo;
   end;
 
 type
@@ -195,6 +219,14 @@ begin
   if Fauth_uri       = ''  then Result := Result + #13 + 'Auth_Uri      bilgisi Tanýmlanmamýþ';
   if Ftoken_uri      = ''  then Result := Result + #13 + 'Token_Uri     bilgisi Tanýmlanmamýþ';
   if Fredirect_uris  = ''  then Result := Result + #13 + 'Redirect_Uris bilgisi Tanýmlanmamýþ';
+end;
+
+procedure TGoogleCal_Helper.AUTHRefreshNotifyProc;
+begin
+  if Assigned( OnAuthTimeOut ) then // event assign edilmiþ mi kontrolü
+  begin
+    OnAuthTimeOut( nil )// event. çaðýrdýk.
+  end;
 end;
 
 constructor TGoogleCal_Helper.Create;
@@ -265,7 +297,7 @@ end;
 
 function SetDllDirectory(lpPathName:PWideChar): Bool; stdcall; external 'kernel32.dll' name 'SetDllDirectoryW';
 
-function TGoogleCal_Helper.WEBIslemler( aType: TSorguTipi; aUrl : String; boolJSON:boolean = false; slParam: TStringList = nil ): String;
+function TGoogleCal_Helper.WEBIslemler( aType: TSorguTipi; aUrl : String; boolJSON:boolean = false; slParam: TStringList = nil;  boolIcIsler:boolean=false  ): String;
   function GetTempDir: string;
   var
     TempDir:     DWORD;
@@ -301,6 +333,7 @@ function TGoogleCal_Helper.WEBIslemler( aType: TSorguTipi; aUrl : String; boolJS
 Const
   E400 = '400: Çaðrý geçersiz, parametreleri kontrol ediniz...';
   E401 = '401: Önce Login olmalýsýnýz...';
+  E404 = '404: Not Found...';
   E409 = '409: Ayný id ile event kaydý ekleyemezsiniz...';
   E410 = '410: Verilen id''ye iliþkin event bulunamadý...';
 
@@ -416,7 +449,12 @@ begin
         except on E: EIdHTTPProtocolException do
           case E.ErrorCode of
           400: MessageDlg( E400, mtError, [mbOk], 0 );
-          401: MessageDlg( E401, mtError, [mbOk], 0 );
+          401: begin
+                 FAuth20_Code  := '';
+                 FAccess_Token := '';
+                 AUTHRefreshNotifyProc(); // ***
+                 MessageDlg( E401, mtError, [mbOk], 0 );
+               end;
           410: MessageDlg( E410, mtError, [mbOk], 0 );
           else InputBox('stDELETE','Hata ' + IntToStr(E.ErrorCode), E.Message );
           end;// Case
@@ -430,7 +468,15 @@ begin
         except on E: EIdHTTPProtocolException do
           case E.ErrorCode of
           400: MessageDlg( E400, mtError, [mbOk], 0 );
-          401: MessageDlg( E401, mtError, [mbOk], 0 );
+          401: begin
+                 FAuth20_Code  := '';
+                 FAccess_Token := '';
+                 AUTHRefreshNotifyProc(); // ***
+                 MessageDlg( E401, mtError, [mbOk], 0 );
+               end;
+          404: begin
+                 if NOT boolIcIsler then MessageDlg( E404, mtError, [mbOk], 0 );
+               end;
           else InputBox('stGET','Hata ' + IntToStr(E.ErrorCode), E.Message );
           end;// Case
         end;
@@ -442,14 +488,18 @@ begin
           Req_Json := TStringStream.Create( slParam.Text );
           try
             Req_Json.Position := 0;
-            FLog.LoadFromStream( Req_Json );
-            Req_Json.Position := 0;
+            LOGla( slParam.Text );
             try
               IdHttp.Post( aUrl, Req_Json, AResponseContent );
             except on E: EIdHTTPProtocolException do
               case E.ErrorCode of
               400: MessageDlg( E400, mtError, [mbOk], 0 );
-              401: MessageDlg( E401, mtError, [mbOk], 0 );
+              401: begin
+                     FAuth20_Code  := '';
+                     FAccess_Token := '';
+                     AUTHRefreshNotifyProc(); // ***
+                     MessageDlg( E401, mtError, [mbOk], 0 );
+                   end;
               409: MessageDlg( E409, mtError, [mbOk], 0 );
               410: MessageDlg( E410, mtError, [mbOk], 0 );
               else InputBox('stPOST','Hata ' + IntToStr(E.ErrorCode), E.Message );
@@ -465,7 +515,12 @@ begin
           except on E: EIdHTTPProtocolException do
             case E.ErrorCode of
             400: MessageDlg( E400, mtError, [mbOk], 0 );
-            401: MessageDlg( E401, mtError, [mbOk], 0 );
+            401: begin
+                   FAuth20_Code  := '';
+                   FAccess_Token := '';
+                   AUTHRefreshNotifyProc(); // ***
+                   MessageDlg( E401, mtError, [mbOk], 0 );
+                 end;
             else InputBox('stPOST_ELSE','Hata', E.Message );
             end;// Case
           end;
@@ -479,14 +534,19 @@ begin
           Req_Json      := TStringStream.Create( slParam.Text );
           try
             Req_Json.Position := 0;
-            FLog.LoadFromStream( Req_Json );
-            Req_Json.Position := 0;
+            LOGla( slParam.Text );
             Try
               IdHttp.Put( aUrl, Req_Json, AResponseContent );
             except on E: EIdHTTPProtocolException do
               case E.ErrorCode of
               400: MessageDlg( E400, mtError, [mbOk], 0 );
-              401: MessageDlg( E401, mtError, [mbOk], 0 );
+              401: begin
+                     FAuth20_Code  := '';
+                     FAccess_Token := '';
+                     AUTHRefreshNotifyProc(); // ***
+                     MessageDlg( E401, mtError, [mbOk], 0 );
+                   end;
+              404: MessageDlg( E404, mtError, [mbOk], 0 );
               else InputBox('stPUT_KeyParam','Hata', E.Message );
               end;// Case
             end;
@@ -498,14 +558,19 @@ begin
           Req_Json      := TStringStream.Create( slParam.Text );
           try
             Req_Json.Position := 0;
-            FLog.LoadFromStream( Req_Json );
-            Req_Json.Position := 0;
+            LOGla( slParam.Text );
             try
               IdHttp.Put( aUrl, Req_Json, AResponseContent );
               except on E: EIdHTTPProtocolException do
                 case E.ErrorCode of
                 400: MessageDlg( E400, mtError, [mbOk], 0 );
-                401: MessageDlg( E401, mtError, [mbOk], 0 );
+                401: begin
+                       FAuth20_Code  := '';
+                       FAccess_Token := '';
+                       AUTHRefreshNotifyProc(); // ***
+                       MessageDlg( E401, mtError, [mbOk], 0 );
+                     end;
+                404: MessageDlg( E404, mtError, [mbOk], 0 );
                 else InputBox('stPUT','Hata', E.Message );
                 end;// Case
               end;
@@ -516,6 +581,7 @@ begin
       end;
     end; // case
     Result := AResponseContent.DataString;
+    LOGLa( 'RESULT : ' + Result );
   Finally
     IdHttp.Free;
     IdHttp.IOHandler := nil;
@@ -772,6 +838,9 @@ Var
   slParam  : TStringList;
   i        : Integer;
 begin
+  Result := '';
+  if FAuth20_Code = '' then Exit; // Authorization gerekli
+
   slParam := TStringList.Create;
 
   With slParam do begin
@@ -842,28 +911,31 @@ begin
     Add( ' "attendees": ['                                        );
     for i := low(aEvent.Attendees) to high(aEvent.Attendees) do
     begin
-      Add( '  {'                                                                    );
-      if aEvent.Attendees[i].attDispName <> ''
-      then
-      Add( '   "displayName": "'+ UTF8Encode( aEvent.Attendees[i].attDispName )+'",' );
-      if aEvent.Attendees[i].attComment <> ''
-      then
-      Add( '   "comment": "'+ UTF8Encode( aEvent.Attendees[i].attComment )+'",'      );
-      if aEvent.Attendees[i].attEmail <> ''
-      then
-      Add( '   "email": "'+aEvent.Attendees[i].attEmail+'"'                        );
-//      if aEvent.Attendees[i].attId <> ''
-//      then
-//      Add( '   "id": "'+ UTF8Encode( aEvent.Attendees[i].attId )+'",'                );
-//      if aEvent.Attendees[i].attOrganizer
-//        then Add( '   "organizer": true'                     )
-//        else Add( '   "organizer": false'                    );
-      Add( '  }'                                             );
+      if aEvent.Attendees[i].attEmail <> '' then
+      begin // neden '' olur ? çünkü parse sonrasý talep üzerine kiþi(ler) listeden çýkartýlmýþsa
+        Add( '  {'                                                                    );
+        if aEvent.Attendees[i].attDispName <> ''
+        then
+        Add( '   "displayName": "'+ UTF8Encode( aEvent.Attendees[i].attDispName )+'",' );
+        if aEvent.Attendees[i].attComment <> ''
+        then
+        Add( '   "comment": "'+ UTF8Encode( aEvent.Attendees[i].attComment )+'",'      );
+        if aEvent.Attendees[i].attEmail <> ''
+        then
+        Add( '   "email": "'+aEvent.Attendees[i].attEmail+'"'                        );
+  //      if aEvent.Attendees[i].attId <> ''
+  //      then
+  //      Add( '   "id": "'+ UTF8Encode( aEvent.Attendees[i].attId )+'",'                );
+  //      if aEvent.Attendees[i].attOrganizer
+  //        then Add( '   "organizer": true'                     )
+  //        else Add( '   "organizer": false'                    );
+        Add( '  }'                                             );
 
-      if i < high(aEvent.Attendees)
-        then Add( '  ,'                                      );
+        if i < high(aEvent.Attendees)
+          then Add( '  ,'                                      );
 
-      Dispose( aEvent.Attendees[i] ) // Hafýzadan uçurduk
+        Dispose( aEvent.Attendees[i] ) // Hafýzadan uçurduk
+      end; // if
     end;
     Add( ' ],'                                               );
     Add( '"visibility": "default"'                           );
@@ -886,12 +958,69 @@ procedure TGoogleCal_Helper.CalEventIDs( Liste : TStrings; aBasTar:TDateTime=0; 
 var
   strGelen : String;
 begin
+  if FAuth20_Code = '' then Exit; // Authorization gerekli
+
   strGelen := CalEventList();
   if pos( '"items":', strGelen ) <= 0 then Exit;
   AradanSec( strGelen, '', '"kind": "calendar#event"', True );
   while Pos('"id": "', strGelen) > 0 do begin
     Liste.Add( AradanSec( strGelen, '"id": "', '"', True ) );
   end;
+end;
+
+function TGoogleCal_Helper.CalEventKisiGuncelle(aEventID, aEmail, aName, aComment: String; boolEkle:boolean): String;
+Var
+  strGelen : String;
+  aEvent   : pCalEventRecord;
+  aKisi    : pAttendeesRecord;
+  i        : Integer;
+  boolKisi : Boolean;
+  strEventId : String;
+begin
+  Result := '';
+  if FAuth20_Code = '' then Exit; // Authorization gerekli
+
+  // Öncelikle Event'i çekelim gerçekte böyle bir kayýt var mý ?
+  strGelen := CalEventFromID( aEventID, True );
+  aEvent   := ParseEvent( strGelen );
+  if aEvent = nil then
+  begin
+    LogLa( '"' + aEventId + '" id''li Google Calendar Event bulunamadý....' );
+    exit;
+  end;
+
+  boolKisi := false;
+  i := 0;
+  while ( i <= High(aEvent.Attendees) ) AND (NOT boolKisi ) do
+  begin
+    boolKisi := LowerCase( aEvent.Attendees[i].attEmail ) = LowerCase(aEmail);
+    if not boolKisi then inc(i);
+  end;
+  if boolKisi then begin
+    if boolEkle then
+    begin
+      LogLa( '"' + aEmail + '" epostasý mevcut - güncelliyoruz...' );
+      aEvent.Attendees[i].attEmail    := aEmail;
+      aEvent.Attendees[i].attDispName := aName;
+      aEvent.Attendees[i].attComment  := aComment;
+    end else begin
+      aEvent.Attendees[i].attEmail    := '';
+    end;
+  end else if boolEkle then
+  begin
+    LogLa( '"' + aEmail + '" Yeni Kiþi ekleniyor...' );
+    i := High(aEvent.Attendees) + 1;
+    SetLength( aEvent.Attendees, i+1 ); // 0..n | n+1=count | n+1+1=count+1
+    New(aKisi);
+      aKisi.attEmail      := aEmail;
+      aKisi.attDispName   := aName;
+      aKisi.attComment    := aComment;
+    aEvent.Attendees[i] := aKisi;
+  end;
+  strEventId := aEvent.EventId; // iþlemden sonra dispose edildiðinden LOG için yedekliyoruz.
+  CalEventUpdate( aEvent.EventId, aEvent );
+  LogLa( strEventId + '  id''li Event UPDATE edildi...' );
+  Result := 'OK';
 end;
 
 function TGoogleCal_Helper.CalEventList( boolDeleted:boolean=false; aBasTar:TDateTime=0; aBitTar: TDateTime=0; aTimeZone:String='+03:00' ): String;
@@ -902,6 +1031,8 @@ Var
   strRes : String;
   aURL   : String;
 begin
+  if FAuth20_Code = '' then Exit; // Authorization gerekli
+
   aURL   :=  FCalendarUri
           +  EncodeURI( FCalendarID )
           + '/events'
@@ -935,6 +1066,9 @@ end;
 
 function TGoogleCal_Helper.CalEventSil(aEventId: String): String;
 begin
+  Result := '';
+  if FAuth20_Code = '' then Exit; // Authorization gerekli
+
   Result := WEBIslemler( stDELETE_KEYParam,  FCalendarUri
                                           +  EncodeURI( FCalendarID )
                                           + '/events'
@@ -952,6 +1086,9 @@ Var
   slParam  : TStringList;
   i : Integer;
 begin
+  Result := '';
+  if FAuth20_Code = '' then Exit; // Authorization gerekli
+
   slParam := TStringList.Create;
 
   With slParam do begin
@@ -959,7 +1096,6 @@ begin
     if aEvent.EventId <> ''
     then
     Add( '  "id": "'+aEvent.EventId+'",'        );
-
     Add( '  "start": {'                                );
 
     if aEvent.TimeZone <> ''
@@ -1019,31 +1155,35 @@ begin
       end;
       Add( ' },'                                                    );
     end;
+
     Add( ' "attendees": ['                                        );
     for i := low(aEvent.Attendees) to high(aEvent.Attendees) do
     begin
-      Add( '  {'                                                                    );
-      if aEvent.Attendees[i].attDispName <> ''
-      then
-      Add( '   "displayName": "'+ UTF8Encode( aEvent.Attendees[i].attDispName )+'",' );
-      if aEvent.Attendees[i].attComment <> ''
-      then
-      Add( '   "comment": "'+ UTF8Encode( aEvent.Attendees[i].attComment )+'",'      );
-      if aEvent.Attendees[i].attEmail <> ''
-      then
-      Add( '   "email": "'+aEvent.Attendees[i].attEmail+'"'                        );
-//      if aEvent.Attendees[i].attId <> ''
-//      then
-//      Add( '   "id": "'+ UTF8Encode( aEvent.Attendees[i].attId )+'",'                );
-//      if aEvent.Attendees[i].attOrganizer
-//        then Add( '   "organizer": true'                     )
-//        else Add( '   "organizer": false'                    );
-      Add( '  }'                                             );
+      if aEvent.Attendees[i].attEmail <> '' then
+      begin // neden '' olur ? çünkü parse sonrasý talep üzerine kiþi(ler) listeden çýkartýlmýþsa
+        Add( '  {'                                                                    );
+        if aEvent.Attendees[i].attDispName <> ''
+        then
+        Add( '   "displayName": "'+ UTF8Encode( aEvent.Attendees[i].attDispName )+'",' );
+        if aEvent.Attendees[i].attComment <> ''
+        then
+        Add( '   "comment": "'+ UTF8Encode( aEvent.Attendees[i].attComment )+'",'      );
+        if aEvent.Attendees[i].attEmail <> ''
+        then
+        Add( '   "email": "'+aEvent.Attendees[i].attEmail+'"'                        );
+  //      if aEvent.Attendees[i].attId <> ''
+  //      then
+  //      Add( '   "id": "'+ UTF8Encode( aEvent.Attendees[i].attId )+'",'                );
+  //      if aEvent.Attendees[i].attOrganizer
+  //        then Add( '   "organizer": true'                     )
+  //        else Add( '   "organizer": false'                    );
+        Add( '  }'                                             );
 
-      if i < high(aEvent.Attendees)
-        then Add( '  ,'                                      );
+        if i < high(aEvent.Attendees)
+          then Add( '  ,'                                      );
 
-      Dispose( aEvent.Attendees[i] ) // Hafýzadan uçurduk
+        Dispose( aEvent.Attendees[i] ) // Hafýzadan uçurduk
+      end; // if
     end;
     Add( ' ],'                                               );
     Add( '"visibility": "default"'                           );
@@ -1065,12 +1205,15 @@ begin
   end;
 end;
 
-function TGoogleCal_Helper.CalEventFromID(aEventId: String): String;
+function TGoogleCal_Helper.CalEventFromID(aEventId: String; boolIcIsler:boolean=false ): String;
 begin
+  Result := '';
+  if FAuth20_Code = '' then Exit; // Authorization gerekli
+
   Result := WEBIslemler( stGET_KEYParam,  FCalendarUri
                                           +  EncodeURI( FCalendarID )
                                           + '/events'
-                                          + '/' + aEventId );
+                                          + '/' + aEventId, false, nil, boolIcIsler );
 
 end;
 
@@ -1080,11 +1223,13 @@ Var
   aEvent    : pCalEventRecord;
   aKisiList : pAttendeesRecord;
   strBlok, dummy   : String;
-  CId       : String;
   Tar1, Tar2: String;
   i         : Integer;
   cDateSep, cTimeSep : Char;
 begin
+  Result := nil;
+  if FAuth20_Code = '' then Exit; // Authorization gerekli
+
   {$IF CompilerVersion >= 22.0}
     cDateSep := FormatSettings.DateSeparator;
     cTimeSep := FormatSettings.TimeSeparator;
@@ -1094,12 +1239,15 @@ begin
     cTimeSep := TimeSeparator;
   {$IFEND}
 
-  Result := nil;
   strBlok := strIcerik;
   if pos('"id": "', strBlok) > 0 then
   begin // Event gelmiþ... :)
-    CId    := xGoogleCal.AradanSec( strBlok, '"id": "'     , '"', True  );
     new( aEvent );
+
+// Eksikler
+//  YeniEvent.creaId       :=  'cinema';
+//  YeniEvent.colorId      :=  SpinEdit1.Value;
+    aEvent.EventId      := xGoogleCal.AradanSec( strBlok, '"id": "', '"', True );
     aEvent.summary      := UTF8Decode( xGoogleCal.AradanSec( strBlok, '"summary": "', '"', False ) );
     aEvent.location     := UTF8Decode( xGoogleCal.AradanSec( strBlok, '"location": "', '"', False ) );
     aEvent.description  := UTF8Decode(
@@ -1109,6 +1257,9 @@ begin
 
     str := strBlok;
     xGoogleCal.AradanSec( str, '"start": {', '"date', True );
+
+    aEvent.TimeZone := xGoogleCal.AradanSec( str, '"timeZone": "', '"', False );
+
     Tar1 := xGoogleCal.AradanSec( str, '": "', '"' , True );
     if Pos('T', Tar1) > 0 then
     begin // DateTime 2018-03-23T17:00:00+03:00
@@ -1351,3 +1502,11 @@ end.
     }
   ]
 }
+
+
+
+
+
+
+-- BAD REQUEST --
+
