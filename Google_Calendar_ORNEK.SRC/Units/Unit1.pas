@@ -86,6 +86,8 @@ type
     DateTimePicker6: TDateTimePicker;
     Shape4: TShape;
     ImageList1: TImageList;
+    Image1: TImage;
+    Image2: TImage;
     procedure FormCreate(Sender: TObject);
     procedure CheckBox1Click(Sender: TObject);
     procedure BitBtn_OAuthClick(Sender: TObject);
@@ -104,7 +106,9 @@ type
     procedure BitBtn8Click(Sender: TObject);
     procedure DateTimePicker5Change(Sender: TObject);
   private
-    procedure OnGoogleCalAuthTimeOut(Sender: TObject);                    
+    procedure OnGoogleCalAuthTimeOut(Sender: TObject);
+    procedure OnGoogleCalAuthStatChange(Sender: TObject);
+
     procedure PanelReadOnly(boolReadOnly: Boolean);
     procedure OlayJSONParse(strIcerik:String; ListView: TListView );
     procedure EkraniTemizle( boolTarihBugunOlsun: Boolean = false );
@@ -153,7 +157,8 @@ begin
       CalendarID    := Edit1.Text; // 'delphicanapi@gmail.com'
     end;
 // Login 401 hatasý alýndýðýnda tetiklenecek Event Procedure
-   xGoogleCal.OnAuthTimeOut := OnGoogleCalAuthTimeOut;
+   xGoogleCal.OnAuthTimeOut    := OnGoogleCalAuthTimeOut;
+   xGoogleCal.OnAuthStatChange := OnGoogleCalAuthStatChange;
 
    xGoogleCal.Log           := Memo1.Lines;
    xGoogleCal.DebugMode     := CheckBox1.Checked; // Explorer penceresi açýk kalsýn vs.
@@ -212,12 +217,16 @@ begin
     Panel7.Color   := clGray;
     Panel7.Enabled := False; // OAuth olana kadar giriþ yapýlmasýn.
     BitBtn_OAuth.Enabled := True;
+    Image1.Visible := False;
+    Image2.Visible := not Image1.Visible;
   end else begin
     Panel4.Color   := $009F5000;
     Panel5.Color   := $009F5000;
     Panel6.Color   := $009F5000;
     Panel7.Color   := clGreen;
     Panel7.Enabled := True;
+    Image1.Visible := True;
+    Image2.Visible := not Image1.Visible;
     BitBtn_OAuth.Enabled := False;
   end;
 
@@ -240,13 +249,9 @@ procedure TForm1.BitBtn_OAuthClick(Sender: TObject);
 begin
   // Güncel bilgilerler ile
   GoogleCalHazirla( false );
-  PanelReadOnly(True);
 
-  xGoogleCal.GoogleOAUTH_01();
-  if xGoogleCal.AccessToken <> '' then
-  begin
-    PanelReadOnly(False);
-  end;
+  // Fire.....!
+  OnGoogleCalAuthTimeOut( nil );
 end;
 
 procedure TForm1.BitBtn2Click(Sender: TObject);
@@ -469,9 +474,17 @@ begin
   end; // While
 end;
 
+procedure TForm1.OnGoogleCalAuthStatChange(Sender: TObject);
+begin
+  if xGoogleCal.IsConnected
+    then PanelReadOnly( False )
+    else PanelReadOnly( True  );
+end;
+
 procedure TForm1.OnGoogleCalAuthTimeOut(Sender: TObject);
 begin
   PanelReadOnly( True );
+  xGoogleCal.GoogleOAUTH;
 end;
 
 procedure TForm1.ListView2DblClick(Sender: TObject);

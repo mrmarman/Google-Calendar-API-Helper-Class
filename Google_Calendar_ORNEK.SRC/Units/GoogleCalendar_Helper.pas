@@ -19,7 +19,6 @@
 {  Kullanýmý :                                                              }
 { (1) Formunuzun OnCreate olayýna da aþaðýdaki size özel tanýmlarý yapýnýz. }
 {                                                                           }
-{                                                                           }
 {  xGoogleCal.Api_Key       := 'AIzaSy...........................uPW5lM';   }
 {  xGoogleCal.Client_Id     := '705649...........................umcrfnb0fam}
 {  xGoogleCal.Client_secret := 'gMhN.................GtX';                  }
@@ -35,15 +34,22 @@
 {                                                                           }
 {   Private                                                                 }
 {     procedure OnGoogleCalAuthTimeOut(Sender: TObject);                    }
+{     procedure OnGoogleCalAuthStatChange(Sender: TObject);                 }
      { Private declarations }
 {                                                                           }
 { (3) Bu procedure içinde de ilgili satýrlarý ekleyin veya yönlendiriniz.   }
 {   procedure TForm1.OnGoogleCalAuthTimeOut(Sender: TObject);               }
 {   begin                                                                   }
 {   // Tekrar OAuth 2.0 operasyonu                                          }
-{      GoogleOAUTH_01();                                                    }
+{      xGoogleCal.GoogleOAUTH;                                              }
 {   end;                                                                    }
 {                                                                           }
+{   procedure TForm1.OnGoogleCalAuthStatChange(Sender: TObject);            }
+{   begin                                                                   }
+{     if xGoogleCal.IsConnected                                             }
+{       then PanelReadOnly( False )                                         }
+{       else PanelReadOnly( True  );                                        }
+{   end;                                                                    }
 {***************************************************************************}
 {  Üzerinde deðiþiklik yapmak serbesttir ancak lütfen bu etiket bloðu       }
 {  içine yaptýðýnýz deðiþikliði ve künyenizi yazmayý ihmal etmeyiniz.       }
@@ -65,12 +71,9 @@ Uses
     ShellApi, SHDocVw, DateUtils, MSHTML, ComObj, Messages,
     IdHttp, IdGlobal, IdSSLOpenSSL, IdAntiFreeze, IdThread;
 
-const
-  wm_Auth20_TimeOut = WM_USER + 1; // user-defined message
-
-
 Type
-  TOnCalAuthTimeOut = procedure(Sender: TObject) of object;
+  TOnCalAuthTimeOut    = procedure(Sender: TObject) of object;
+  TOnCalAuthStatChange = procedure(Sender: TObject) of object;
 
 Type
   pAPIClientInfo = ^tAPIClientInfo;
@@ -122,6 +125,9 @@ Type
   TGoogleCal_Helper = Class(TObject)
   private
     FOnNotificationGonder           : TOnCalAuthTimeOut;
+    FOnAuthStatChange               : TOnCalAuthStatChange;
+
+    procedure KanalBitti(aSender: TObject);
     Const
       FCalendarUri  = 'https://www.googleapis.com/calendar/v3/calendars/';
     Var
@@ -135,6 +141,7 @@ Type
 
       FLog                          : TStrings;
       FAccess_Token                 : String;
+      FAuth20_Code                  : String;
       FExpires_In                   : String;
       FRefresh_Token                : String;
       FToken_Type                   : String;
@@ -142,17 +149,20 @@ Type
       FLoginGmail                   : string;
       FLoginPass                    : string;
       FDebugMode                    : boolean;
-    function  EncodeURI(const ASrc: string): UTF8String;
-    function  WEBIslemler( aType: TSorguTipi; aUrl : String; boolJSON:boolean = false; slParam: TStringList = nil; boolIcIsler:Boolean=false ): String;
-    procedure LOGla( strIcerik: String );
-  public
-      FAuth20_Code                  : String;
-    constructor Create;
-    destructor  Destroy; Override;
-    property    OnAuthTimeOut : TOnCalAuthTimeOut read FOnNotificationGonder write FOnNotificationGonder;
-    procedure   AUTHRefreshNotifyProc;
+    function    EncodeURI(const ASrc: string): UTF8String;
+    function    WEBIslemler( aType: TSorguTipi; aUrl : String; boolJSON:boolean = false; slParam: TStringList = nil; boolIcIsler:Boolean=false ): String;
+    procedure   LOGla( strIcerik: String );
     function    GoogleOAUTH_01: string;
     function    GoogleOAUTH_02: string;
+    function    FIsConnected  : boolean;
+    procedure   AUTHRefreshNotifyProc;
+    procedure   AUTHStatusProc;
+  public
+    constructor Create;
+    destructor  Destroy; Override;
+    property    OnAuthTimeOut    : TOnCalAuthTimeOut    read FOnNotificationGonder write FOnNotificationGonder;
+    property    OnAuthStatChange : TOnCalAuthStatChange read FOnAuthStatChange     write FOnAuthStatChange;
+    procedure   GoogleOAUTH;
     property    CalendarID    : string read FCalendarID Write FCalendarID;
     property    Api_Key       : string read FApi_Key Write FApi_Key;
     property    Client_Id     : string read Fclient_id Write Fclient_id;
@@ -168,6 +178,7 @@ Type
     property    Log           : TStrings read FLog Write FLog;
     function    APIClientInfo( strJSON:String ): pAPIClientInfo;
     property    AccessToken   : string read FAccess_Token;
+    property    IsConnected   : boolean read FIsConnected;
 
     function    CalEventList  ( boolDeleted:boolean=false; aBasTar:TDateTime=0; aBitTar: TDateTime=0; aTimeZone:String='+03:00' ): String;
     procedure   CalEventIDs   ( Liste : TStrings; aBasTar:TDateTime=0; aBitTar: TDateTime=0; boolDeleted:boolean=false );
@@ -188,11 +199,34 @@ type
     procedure DeleteEx(AURL: string; AResponseContent: TStream);
   end;
 
-
 Var
   xGoogleCal : TGoogleCal_Helper;
 
 implementation
+
+// -----------------------------------------------------------------------------
+// Google Calendar API için hazýrlýk iþlemleri....
+// OAuth 2.0 için Thread Açýyoruz...
+// -----------------------------------------------------------------------------
+type
+  TBirDonguKanali = class(TThread)
+  private
+    procedure LoginIslemi;
+    { Private declarations }
+  protected
+    procedure Execute; override;
+  end;
+
+procedure TBirDonguKanali.Execute;
+begin
+  Synchronize(LoginIslemi);
+  inherited;
+end;
+
+procedure TBirDonguKanali.LoginIslemi;
+begin
+  xGoogleCal.GoogleOAUTH_01();
+end;
 
 {$IFDEF SSL_DLLs_inResourceMode}
    {$R RES\RES.RES} // SSL DLL'leri Resource olarak saklandýðýnda lazým...
@@ -226,6 +260,14 @@ begin
   if Assigned( OnAuthTimeOut ) then // event assign edilmiþ mi kontrolü
   begin
     OnAuthTimeOut( nil )// event. çaðýrdýk.
+  end;
+end;
+
+procedure TGoogleCal_Helper.AUTHStatusProc;
+begin
+  if Assigned( OnAuthStatChange ) then // event assign edilmiþ mi kontrolü
+  begin
+    OnAuthStatChange( nil )// event. çaðýrdýk.
   end;
 end;
 
@@ -293,6 +335,11 @@ begin
   end;
 
   SetLength(Result, J-1);
+end;
+
+function TGoogleCal_Helper.FIsConnected: boolean;
+begin
+  Result := FAuth20_Code <> '';
 end;
 
 function SetDllDirectory(lpPathName:PWideChar): Bool; stdcall; external 'kernel32.dll' name 'SetDllDirectoryW';
@@ -588,6 +635,28 @@ begin
     OpenSSL.Free;
     AResponseContent.Free;
   End;
+end;
+
+procedure TGoogleCal_Helper.GoogleOAUTH;
+begin
+  Try
+    With TBirDonguKanali.Create( False ) do
+    begin
+      OnTerminate := KanalBitti;
+    end;
+  Except
+    //ShowMessage('Google Calendar Eriþimi Yapýlamadý...');
+  End;
+end;
+
+procedure TGoogleCal_Helper.KanalBitti(aSender: TObject);
+begin
+  AUTHStatusProc(); // EVENT Tetikledik...
+  if xGoogleCal.FAuth20_Code = '' then
+  begin
+ // Tekrar Deneyelim...
+    GoogleOAUTH();
+  end;
 end;
 
 function TGoogleCal_Helper.GoogleOAUTH_01(): String;
