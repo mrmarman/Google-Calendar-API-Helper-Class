@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, ExtCtrls, Buttons, ComCtrls, Menus, Spin;
+  Dialogs, StdCtrls, ExtCtrls, Buttons, ComCtrls, Menus, Spin, ImgList;
 
 type
   TForm1 = class(TForm)
@@ -80,6 +80,12 @@ type
     BitBtn7: TBitBtn;
     Memo2: TMemo;
     BitBtn8: TBitBtn;
+    CheckBox_SilinmisKayitlar: TCheckBox;
+    Label20: TLabel;
+    DateTimePicker5: TDateTimePicker;
+    DateTimePicker6: TDateTimePicker;
+    Shape4: TShape;
+    ImageList1: TImageList;
     procedure FormCreate(Sender: TObject);
     procedure CheckBox1Click(Sender: TObject);
     procedure BitBtn1Click(Sender: TObject);
@@ -96,10 +102,11 @@ type
     procedure ListView2DblClick(Sender: TObject);
     procedure BitBtn7Click(Sender: TObject);
     procedure BitBtn8Click(Sender: TObject);
+    procedure DateTimePicker5Change(Sender: TObject);
   private
     procedure PanelReadOnly(boolReadOnly: Boolean);
     procedure OlayJSONParse(strIcerik:String; ListView: TListView );
-    procedure EkraniTemizle;
+    procedure EkraniTemizle( boolTarihBugunOlsun: Boolean = false );
     procedure GoogleCalHazirla( boolINIYukle : boolean  );
     { Private declarations }
   public
@@ -113,7 +120,7 @@ implementation
 
 {$R *.dfm}
 
-Uses INIFiles, GoogleCalendar_Helper;
+Uses DateUtils, INIFiles, GoogleCalendar_Helper;
 
 procedure TForm1.GoogleCalHazirla( boolINIYukle : boolean );
 Var
@@ -151,31 +158,28 @@ begin
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);
-Var
-  i   : Integer;
 begin
-  PanelReadOnly(True);
+  // SSL DLL'lerinin Resource üzerinden kullanýlmasý için Project/Options altýnda
+  // "Directories/Conditional" baþlýðýndaki "Conditional Defines" kýsmýna
+  // SSL_DLLs_inResourceMode
+  // direktif kelimesini eklemelisiniz.
+  // Bu GLOBAL olarak tüm projede bilinecek, Class içinde de deðerlendirilecektir.
 
-  for i := 0 to self.ComponentCount - 1 do
-    if self.Components[i] is TEdit
-      then TEdit( self.Components[i] ).text := '';
-  DateTimePicker1.DateTime := INT(now);
-  DateTimePicker2.DateTime := INT(now);
-  DateTimePicker3.DateTime := INT(now);
-  DateTimePicker4.DateTime := INT(now);
-
+  EkraniTemizle( true );
   Edit2.PasswordChar := '*';
 
   Memo1.Lines.Clear;
   ListView1.PopupMenu      := PopupMenu1;
   ListView2.PopupMenu      := PopupMenu2;
+  ListView2.StateImages    := ImageList1;
   self.Position            := poDesktopCenter;
 //self.WindowState := wsMaximized;
 
+  PanelReadOnly   ( true );
   GoogleCalHazirla( true );
 end;
 
-procedure TForm1.EkraniTemizle();
+procedure TForm1.EkraniTemizle( boolTarihBugunOlsun: Boolean = false );
 Var
   i : Integer;
 begin
@@ -186,6 +190,7 @@ begin
       then TEdit(self.Components[i]).Text := '';
     if (self.Components[i] is TDateTimePicker)
       AND ( TDateTimePicker(self.Components[i]).parent.Tag in [4, 5, 6] )
+      AND ( boolTarihBugunOlsun )
       then TDateTimePicker(self.Components[i]).DateTime := Int(Now);
     if (self.Components[i] is TMemo)
       AND ( TMemo(self.Components[i]).parent.Tag in [4, 5, 6] )
@@ -257,7 +262,14 @@ begin
 // Yeni EVENT ekleme iþlemi
 // Paketi Hazýrlýyoruz
   New(YeniEvent);
-
+  if TBitBtn(Sender).Tag = 1 then
+  begin //Yeni Event Ekleniyor...
+    YeniEvent.EventId      :=  '11086arman' + FormatDateTime('YYYYMMDDHHmmSS', Now() );
+      //  characters allowed in the ID are those used in base32hex encoding,
+      // i.e. lowercase letters a-v and digits 0-9, see section 3.1.2 in RFC2938
+      // the length of the ID must be between 5 and 1024 characters
+      // the ID must be unique per calendar
+  end;
   YeniEvent.BasTar       :=  DateTimePicker1.DateTime;
   YeniEvent.BitTar       :=  DateTimePicker3.DateTime;
   YeniEvent.TimeZone     := 'GMT+03:00';
@@ -267,7 +279,7 @@ begin
   YeniEvent.location     :=  Edit16.Text;
   //YeniEvent.creaDispName :=  Edit14.Text;
   //YeniEvent.creaEmail    :=  Edit18.Text;
-  //YeniEvent.creaId       :=  Edit19.Text;
+  YeniEvent.creaId       :=  'cinema';
   YeniEvent.colorId      :=  SpinEdit1.Value;
 
   for i := 0 to ListView1.Items.Count - 1 do
@@ -323,7 +335,8 @@ procedure TForm1.BitBtn5Click(Sender: TObject);
 Var
   strGelen : String;
 begin
-  strGelen := xGoogleCal.CalEventList();
+  strGelen := xGoogleCal.CalEventList( CheckBox_SilinmisKayitlar.Checked, DateTimePicker5.Date, DateTimePicker6.Date, 'GMT+03:00' );
+  //strGelen := xGoogleCal.CalEventList( CheckBox_SilinmisKayitlar.Checked );
   if strGelen <> '' then Memo1.Lines.Add( strGelen );
   ListView1.Items.Clear;
   ListView2.Items.Clear;
@@ -394,6 +407,11 @@ begin
   DateTimePicker3.DateTime := DateTimePicker1.DateTime;
 end;
 
+procedure TForm1.DateTimePicker5Change(Sender: TObject);
+begin
+  DateTimePicker6.DateTime := DateTimePicker5.DateTime;
+end;
+
 procedure TForm1.miSeciliKisiSilClick(Sender: TObject);
 begin
   xGoogleCal.CalEventSil( ListView2.Selected.SubItems[0] );
@@ -414,14 +432,15 @@ end;
 Procedure TForm1.OlayJSONParse( strIcerik:String; ListView: TListView );
 Var
   strBlok, str : String;
-  CId, Baslik, BasTar, BitTar, Bilgi : String;
+  CId, Baslik, BasTar, BitTar, Bilgi, eStat : String;
 begin
   strBlok := strIcerik;
   while Pos('"id": "', strBlok) > 0 do
   begin
-    CId    := xGoogleCal.AradanSec( strBlok, '"id": "'     , '"', True  );
-    Baslik := xGoogleCal.AradanSec( strBlok, '"summary": "', '"', False );
+    CId    := xGoogleCal.AradanSec( strBlok, '"id": "'     ,     '"', True  );
+    Baslik := xGoogleCal.AradanSec( strBlok, '"summary": "',     '"', False );
     Bilgi  := xGoogleCal.AradanSec( strBlok, '"description": "', '"', False );
+    eStat  := xGoogleCal.AradanSec( strBlok, '"status": "',      '"', False );
 
     str := strBlok;
     xGoogleCal.AradanSec( str, '"start": {', '"date', True );
@@ -432,6 +451,9 @@ begin
     BitTar := xGoogleCal.AradanSec( str, ': "', '"' , True );
 
     With ListView.Items.Add do begin
+      if eStat = 'cancelled'
+        then StateIndex := 2
+        else StateIndex := 1;
       SubItems.Add( CId );
       SubItems.Add( Baslik );
       SubItems.Add( BasTar);

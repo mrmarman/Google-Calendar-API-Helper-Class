@@ -40,7 +40,7 @@
 {                                                                           }
 {                                                                           }
 {***************************************************************************}
-// {$DEFINE SSL_DLLs_inResourceMode}
+//{$DEFINE SSL_DLLs_inResourceMode}
 unit GoogleCalendar_Helper;
 
 interface
@@ -71,7 +71,7 @@ Type
       attEmail     : String;
       attDispName  : String;
       attComment   : String;
-     //attId        : String;
+    //attId        : String;
     //attOrganizer : Boolean;
       attResponses : String;
 end;
@@ -79,6 +79,7 @@ end;
 Type
   pCalEventRecord = ^tCalEventRecord;
   tCalEventRecord = Record
+     EventId     : string;
      BasTar      : TDateTime;
      BitTar      : TDateTime;
      TimeZone    : String;
@@ -91,6 +92,7 @@ Type
      creaEmail   : String;
      creaId      : String;
      Attendees   : Array of pAttendeesRecord;
+     EventStatus : String;
 end;
 
 Type
@@ -143,8 +145,8 @@ Type
     function    ReferansKontol: String;
     property    Log           : TStrings read FLog Write FLog;
     property    AccessToken   : string read FAccess_Token;
-    function    CalEventList  : String;
-    procedure   CalEventIDs   ( Liste : TStrings );
+    function    CalEventList  ( boolDeleted:boolean=false; aBasTar:TDateTime=0; aBitTar: TDateTime=0; aTimeZone:String='+03:00' ): String;
+    procedure   CalEventIDs   ( Liste : TStrings; aBasTar:TDateTime=0; aBitTar: TDateTime=0; boolDeleted:boolean=false );
     function    CalEventEkle  ( aEvent: pCalEventRecord ): String;
     function    CalEventUpdate( strEventID:String; aEvent: pCalEventRecord ): String;
     function    CalEventSil( aEventId: String ): String;
@@ -296,6 +298,12 @@ function TGoogleCal_Helper.WEBIslemler( aType: TSorguTipi; aUrl : String; boolJS
       CloseHandle(HFileRes);
     end;
   end;
+Const
+  E400 = '400: Çaðrý geçersiz, parametreleri kontrol ediniz...';
+  E401 = '401: Önce Login olmalýsýnýz...';
+  E409 = '409: Ayný id ile event kaydý ekleyemezsiniz...';
+  E410 = '410: Verilen id''ye iliþkin event bulunamadý...';
+
 Var
   OpenSSL          : TIdSSLIOHandlerSocketOpenSSL;
   IdHttp           : TIdHttp;
@@ -398,35 +406,34 @@ begin
         Request.UserAgent           := 'Mozilla/3.0 (compatible; Indy Library)';
         Request.CustomHeaders.Values['DataServiceVersion'] := '2.0';
       end;
-
     end;
 
     case aType of
     stDELETE, stDELETE_KEYParam:
       begin
-        Try
+        try
           IdHttp.DeleteEx( aUrl, AResponseContent );
-        Except on E : Exception do
-          begin
-            if Pos('404 Not Found', E.Message) > 0
-            then MessageDlg( 'Hatalý Giriþ veya Event Bulunamadý...', mtError, [mbOk], 0 )
-            else
-            if Pos('410 Gone', E.Message) > 0
-            then MessageDlg( 'Event Zaten Silinmiþ...', mtError, [mbOk], 0 )
-            else InputBox('stDELETE','Hata', E.Message );
-          end;
-        End;
+        except on E: EIdHTTPProtocolException do
+          case E.ErrorCode of
+          400: MessageDlg( E400, mtError, [mbOk], 0 );
+          401: MessageDlg( E401, mtError, [mbOk], 0 );
+          410: MessageDlg( E410, mtError, [mbOk], 0 );
+          else InputBox('stDELETE','Hata ' + IntToStr(E.ErrorCode), E.Message );
+          end;// Case
+        end;
       end;
     stGET, stGET_KEYParam:
       begin
         Try
           LOGLa( 'stGET, stGET_KEYParam : ' + aURL );
-          IdHttp.Get ( aUrl, AResponseContent );
-        Except on E : Exception do
-          if Pos('401 Unauthorized', E.Message) > 0
-          then MessageDlg( 'Önce Login Olmalýsýnýz...', mtError, [mbOk], 0 )
-          else InputBox('stGET','Hata', E.Message );
-        End;
+          IdHttp.Get( aUrl, AResponseContent );
+        except on E: EIdHTTPProtocolException do
+          case E.ErrorCode of
+          400: MessageDlg( E400, mtError, [mbOk], 0 );
+          401: MessageDlg( E401, mtError, [mbOk], 0 );
+          else InputBox('stGET','Hata ' + IntToStr(E.ErrorCode), E.Message );
+          end;// Case
+        end;
       end;
     stPOST, stPOST_KEYParam:
       begin
@@ -437,13 +444,17 @@ begin
             Req_Json.Position := 0;
             FLog.LoadFromStream( Req_Json );
             Req_Json.Position := 0;
-            Try
+            try
               IdHttp.Post( aUrl, Req_Json, AResponseContent );
-            Except on E : Exception do
-              if Pos('401 Unauthorized', E.Message) > 0
-              then MessageDlg( 'Önce Login Olmalýsýnýz...', mtError, [mbOk], 0 )
-              else InputBox('stPOST','Hata', E.Message );
-            End;
+            except on E: EIdHTTPProtocolException do
+              case E.ErrorCode of
+              400: MessageDlg( E400, mtError, [mbOk], 0 );
+              401: MessageDlg( E401, mtError, [mbOk], 0 );
+              409: MessageDlg( E409, mtError, [mbOk], 0 );
+              410: MessageDlg( E410, mtError, [mbOk], 0 );
+              else InputBox('stPOST','Hata ' + IntToStr(E.ErrorCode), E.Message );
+              end;// Case
+            end;
           finally
             Req_Json.Free;
           end;
@@ -451,11 +462,13 @@ begin
         else begin
           try
             IdHttp.Post( aUrl, slParam, AResponseContent );
-          Except on E : Exception do
-            if Pos('401 Unauthorized', E.Message) > 0
-            then MessageDlg( 'Önce Login Olmalýsýnýz...', mtError, [mbOk], 0 )
+          except on E: EIdHTTPProtocolException do
+            case E.ErrorCode of
+            400: MessageDlg( E400, mtError, [mbOk], 0 );
+            401: MessageDlg( E401, mtError, [mbOk], 0 );
             else InputBox('stPOST_ELSE','Hata', E.Message );
-          End;
+            end;// Case
+          end;
         end;
       end;
     stPUT_KEYParam :
@@ -470,11 +483,13 @@ begin
             Req_Json.Position := 0;
             Try
               IdHttp.Put( aUrl, Req_Json, AResponseContent );
-            Except on E : Exception do
-              if Pos('401 Unauthorized', E.Message) > 0
-              then MessageDlg( 'Önce Login Olmalýsýnýz...', mtError, [mbOk], 0 )
-              else InputBox('stPOST','Hata', E.Message );
-            End;
+            except on E: EIdHTTPProtocolException do
+              case E.ErrorCode of
+              400: MessageDlg( E400, mtError, [mbOk], 0 );
+              401: MessageDlg( E401, mtError, [mbOk], 0 );
+              else InputBox('stPUT_KeyParam','Hata', E.Message );
+              end;// Case
+            end;
           finally
             Req_Json.Free;
           end;
@@ -482,13 +497,21 @@ begin
         else begin
           Req_Json      := TStringStream.Create( slParam.Text );
           try
-            IdHttp.Put( aUrl, Req_Json, AResponseContent );
+            Req_Json.Position := 0;
+            FLog.LoadFromStream( Req_Json );
+            Req_Json.Position := 0;
+            try
+              IdHttp.Put( aUrl, Req_Json, AResponseContent );
+              except on E: EIdHTTPProtocolException do
+                case E.ErrorCode of
+                400: MessageDlg( E400, mtError, [mbOk], 0 );
+                401: MessageDlg( E401, mtError, [mbOk], 0 );
+                else InputBox('stPUT','Hata', E.Message );
+                end;// Case
+              end;
+          finally
             Req_Json.Free;
-          Except on E : Exception do
-            if Pos('401 Unauthorized', E.Message) > 0
-            then MessageDlg( 'Önce Login Olmalýsýnýz...', mtError, [mbOk], 0 )
-            else InputBox('stPOST_ELSE','Hata', E.Message );
-          End;
+          end;
         end;
       end;
     end; // case
@@ -594,6 +617,11 @@ LogLa( 'MainUrl: ' + aUrl );
   // 2 saniye Butonun aktifleþmesini bekliyoruz...
   Zaman := GetTickCount + 2000;
   while GettickCount < Zaman do begin
+    Application.ProcessMessages;
+    Sleep(10);
+  end;
+
+  while IE.Busy do begin
     Application.ProcessMessages;
     Sleep(10);
   end;
@@ -748,6 +776,10 @@ begin
 
   With slParam do begin
     Add( '{'                                          );
+    if aEvent.EventId <> ''
+    then
+    Add( '  "id": "'+aEvent.EventId+'",'        );
+
     Add( '  "start": {'                                );
 
     if aEvent.TimeZone <> ''
@@ -776,9 +808,14 @@ begin
     end;
     Add( strEkle                                      );
     Add( ' },'                                        );
+
     if aEvent.description <> ''
     then
-    Add( ' "description": "'+ UTF8Encode( StringReplace(aEvent.description, #13#10, '\n', [rfReplaceAll] ) )+'",'  );
+    begin
+      if Pos( #13#10, aEvent.description) > 0 then aEvent.description := StringReplace(aEvent.description, #13#10, '\n', [rfReplaceAll] );
+      if Pos( #13,    aEvent.description) > 0 then aEvent.description := StringReplace(aEvent.description, #13,    '\n', [rfReplaceAll] );
+      Add( ' "description": "'+ UTF8Encode( aEvent.description )+'",'  );
+    end;
     if aEvent.colorId > 0
     then
     Add( ' "colorId": "'+IntToStr(aEvent.colorId)+'",'             );
@@ -788,32 +825,33 @@ begin
     if aEvent.summary <> ''
     then
     Add( ' "summary": "'+ UTF8Encode(aEvent.summary) + '",'        );
-    Add( ' "creator": {'                                          );
     if aEvent.creaDispName <> ''
-    then
-    Add( '  "displayName": "'+ UTF8Encode(aEvent.creaDispName)+'",');
-    if aEvent.creaEmail <> ''
-    then begin
-    Add( '  "email": "'+ UTF8Encode(aEvent.creaEmail)+'",'         );
-    Add( '  "self": false,'         );
+    then begin // Blok tümüyle en az bir creator varsa geçerli.
+      Add( ' "creator": {'                                          );
+      Add( '  "displayName": "'+ UTF8Encode(aEvent.creaDispName)+'",');
+      if aEvent.creaId <> ''
+      then
+      Add( '  "id": "'+ UTF8Encode(aEvent.creaId)+'",'               );
+      if aEvent.creaEmail <> ''
+      then begin
+      Add( '  "email": "'+ UTF8Encode(aEvent.creaEmail)+'",'         );
+      Add( '  "self": false'         );
+      end;
+      Add( ' },'                                                    );
     end;
-    if aEvent.creaId <> ''
-    then
-    Add( '  "id": "'+ UTF8Encode(aEvent.creaId)+'"'                );
-    Add( ' },'                                                    );
     Add( ' "attendees": ['                                        );
     for i := low(aEvent.Attendees) to high(aEvent.Attendees) do
     begin
       Add( '  {'                                                                    );
-      if aEvent.Attendees[i].attEmail <> ''
-      then
-      Add( '   "email": "'+aEvent.Attendees[i].attEmail+'",'                        );
       if aEvent.Attendees[i].attDispName <> ''
       then
       Add( '   "displayName": "'+ UTF8Encode( aEvent.Attendees[i].attDispName )+'",' );
       if aEvent.Attendees[i].attComment <> ''
       then
-      Add( '   "comment": "'+ UTF8Encode( aEvent.Attendees[i].attComment )+'"'      );
+      Add( '   "comment": "'+ UTF8Encode( aEvent.Attendees[i].attComment )+'",'      );
+      if aEvent.Attendees[i].attEmail <> ''
+      then
+      Add( '   "email": "'+aEvent.Attendees[i].attEmail+'"'                        );
 //      if aEvent.Attendees[i].attId <> ''
 //      then
 //      Add( '   "id": "'+ UTF8Encode( aEvent.Attendees[i].attId )+'",'                );
@@ -844,7 +882,7 @@ begin
   end;
 end;
 
-procedure TGoogleCal_Helper.CalEventIDs( Liste : TStrings );
+procedure TGoogleCal_Helper.CalEventIDs( Liste : TStrings; aBasTar:TDateTime=0; aBitTar: TDateTime=0; boolDeleted:boolean=false);
 var
   strGelen : String;
 begin
@@ -856,20 +894,43 @@ begin
   end;
 end;
 
-function TGoogleCal_Helper.CalEventList: String;
+function TGoogleCal_Helper.CalEventList( boolDeleted:boolean=false; aBasTar:TDateTime=0; aBitTar: TDateTime=0; aTimeZone:String='+03:00' ): String;
+Const
+  TimeFmt     = '%.4d-%.2d-%.2dT00:00:00Z';
+  TimeFmtZone = '%.4d-%.2d-%.2dT00:00:00'; // + aTimeZone
 Var
   strRes : String;
+  aURL   : String;
 begin
-     LOGla(  FCalendarUri
-          + EncodeURI( FCalendarID )
+  aURL   :=  FCalendarUri
+          +  EncodeURI( FCalendarID )
           + '/events'
-          + '?key='+ EncodeURI( FApi_Key ) );
-  strRes := UTF8Decode( WEBIslemler( stGET_KEYParam, FCalendarUri
-                                                  +  EncodeURI( FCalendarID )
-                                                  + '/events'
-                                                  + '?key='
-                                                  + EncodeURI( FApi_Key ) ));
-  Result := strRes; 
+          + '?key='
+          + EncodeURI( FApi_Key );
+  if aBasTar > 0 then
+  begin
+    aBitTar := DateUtils.IncDay( aBitTar, 1 ); // ilgili gün hariç tutuluyor, telafi için (1) gün ekledik.
+    if Pos('+', aTimeZone) > 1 then system.Delete( aTimeZone, 1, Pos('+', aTimeZone)-1); // "GMT+03:00" gibi ise parametre olarak sadece "+03:00" kýsmý lazým.
+    if Pos('-', aTimeZone) > 1 then system.Delete( aTimeZone, 1, Pos('-', aTimeZone)-1); // "GMT-03:00" gibi ise parametre olarak sadece "-03:00" kýsmý lazým.
+
+    aURL := aURL
+    + '&timeMin='  + EncodeURI( Format( TimeFmtZone, [YearOf(aBasTar), MonthOf(aBasTar), DayOf(aBasTar)] ) )
+    +  EncodeURI( aTimeZone ) // aTimeZone: '+03:00' vb.
+    + '&timeMax='  + EncodeURI( Format( TimeFmtZone, [YearOf(aBitTar), MonthOf(aBitTar), DayOf(aBitTar)] ) )
+    +  EncodeURI( aTimeZone ) // aTimeZone: '+03:00' vb.
+  end;
+  aURL := aURL
+    + '&singleEvents=true'
+    + '&orderBy=startTime'; // veya 'updated';
+
+  if boolDeleted
+    then aURL := aURL + '&showDeleted=true'
+    else aURL := aURL + '&showDeleted=false';
+    
+  LOGla(  aURL );
+  strRes := UTF8Decode( WEBIslemler( stGET_KEYParam, aURL ));
+
+  Result := strRes;
 end;
 
 function TGoogleCal_Helper.CalEventSil(aEventId: String): String;
@@ -895,11 +956,15 @@ begin
 
   With slParam do begin
     Add( '{'                                          );
+    if aEvent.EventId <> ''
+    then
+    Add( '  "id": "'+aEvent.EventId+'",'        );
+
     Add( '  "start": {'                                );
 
     if aEvent.TimeZone <> ''
     then
-      Add( '  "timeZone": "'+aEvent.TimeZone+'",'        );
+    Add( '  "timeZone": "'+aEvent.TimeZone+'",'        );
 
     if aEvent.boolTumGun then begin
       strEkle := Format( jsonAllDayFmt, [ YearOf(aEvent.BasTar), MonthOf(aEvent.BasTar), DayOf(aEvent.BasTar) ] );
@@ -908,12 +973,12 @@ begin
     end;
 
     Add( strEkle                                      );
+
     Add( ' },'                                        );
     Add( '  "end": {'                                  );
-
     if aEvent.TimeZone <> ''
     then
-      Add( '  "timeZone": "'+aEvent.TimeZone+'",'        );
+    Add( '  "timeZone": "'+aEvent.TimeZone+'",'        );
 
     if aEvent.boolTumGun then begin
       aEvent.BitTar := incDay( aEvent.BitTar, +1 ); // Google 1 gün eksik hesaplýyor, talfisini ekliyoruz. Okurken de çýkartýcaz...
@@ -923,43 +988,50 @@ begin
     end;
     Add( strEkle                                      );
     Add( ' },'                                        );
+
     if aEvent.description <> ''
     then
-      Add( ' "description": "'+ UTF8Encode( StringReplace(aEvent.description, #13#10, '\n', [rfReplaceAll] ) )+'",'  );
+    begin
+      if Pos( #13#10, aEvent.description) > 0 then aEvent.description := StringReplace(aEvent.description, #13#10, '\n', [rfReplaceAll] );
+      if Pos( #13,    aEvent.description) > 0 then aEvent.description := StringReplace(aEvent.description, #13,    '\n', [rfReplaceAll] );
+      Add( ' "description": "'+ UTF8Encode( aEvent.description )+'",'  );
+    end;
     if aEvent.colorId > 0
     then
-      Add( ' "colorId": "'+IntToStr(aEvent.colorId)+'",'             );
+    Add( ' "colorId": "'+IntToStr(aEvent.colorId)+'",'             );
     if aEvent.location <> ''
     then
-      Add( ' "location": "'+ UTF8Encode(aEvent.location) + '",'      );
+    Add( ' "location": "'+ UTF8Encode(aEvent.location) + '",'      );
     if aEvent.summary <> ''
     then
-      Add( ' "summary": "'+ UTF8Encode(aEvent.summary) + '",'        );
-
-    Add( ' "creator": {'                                          );
+    Add( ' "summary": "'+ UTF8Encode(aEvent.summary) + '",'        );
     if aEvent.creaDispName <> ''
-    then
+    then begin // Blok tümüyle en az bir creator varsa geçerli.
+      Add( ' "creator": {'                                          );
       Add( '  "displayName": "'+ UTF8Encode(aEvent.creaDispName)+'",');
-    if aEvent.creaEmail <> ''
-    then
+      if aEvent.creaId <> ''
+      then
+      Add( '  "id": "'+ UTF8Encode(aEvent.creaId)+'",'               );
+      if aEvent.creaEmail <> ''
+      then begin
       Add( '  "email": "'+ UTF8Encode(aEvent.creaEmail)+'",'         );
-    if aEvent.creaId <> ''
-    then
-      Add( '  "id": "'+ UTF8Encode(aEvent.creaId)+'"'                );
-    Add( ' },'                                                    );
+      Add( '  "self": false'         );
+      end;
+      Add( ' },'                                                    );
+    end;
     Add( ' "attendees": ['                                        );
     for i := low(aEvent.Attendees) to high(aEvent.Attendees) do
     begin
       Add( '  {'                                                                    );
-      if aEvent.Attendees[i].attEmail <> ''
-      then
-      Add( '   "email": "'+aEvent.Attendees[i].attEmail+'",'                        );
       if aEvent.Attendees[i].attDispName <> ''
       then
       Add( '   "displayName": "'+ UTF8Encode( aEvent.Attendees[i].attDispName )+'",' );
       if aEvent.Attendees[i].attComment <> ''
       then
-      Add( '   "comment": "'+ UTF8Encode( aEvent.Attendees[i].attComment )+'"'      );
+      Add( '   "comment": "'+ UTF8Encode( aEvent.Attendees[i].attComment )+'",'      );
+      if aEvent.Attendees[i].attEmail <> ''
+      then
+      Add( '   "email": "'+aEvent.Attendees[i].attEmail+'"'                        );
 //      if aEvent.Attendees[i].attId <> ''
 //      then
 //      Add( '   "id": "'+ UTF8Encode( aEvent.Attendees[i].attId )+'",'                );
@@ -1033,6 +1105,7 @@ begin
     aEvent.description  := UTF8Decode(
       StringReplace( xGoogleCal.AradanSec( strBlok, '"description": "', '"', False ), '\n', #13#10, [rfReplaceAll] )
        );
+    aEvent.EventStatus  := xGoogleCal.AradanSec( strBlok, '"status": "', '"', False );
 
     str := strBlok;
     xGoogleCal.AradanSec( str, '"start": {', '"date', True );
@@ -1131,4 +1204,150 @@ finalization
 end.
 
 
-
+// EVENT //
+{
+  "kind": "calendar#event",
+  "etag": etag,
+  "id": string,
+  "status": string,
+  "htmlLink": string,
+  "created": datetime,
+  "updated": datetime,
+  "summary": string,
+  "description": string,
+  "location": string,
+  "colorId": string,
+  "creator": {
+    "id": string,
+    "email": string,
+    "displayName": string,
+    "self": boolean
+  },
+  "organizer": {
+    "id": string,
+    "email": string,
+    "displayName": string,
+    "self": boolean
+  },
+  "start": {
+    "date": date,
+    "dateTime": datetime,
+    "timeZone": string
+  },
+  "end": {
+    "date": date,
+    "dateTime": datetime,
+    "timeZone": string
+  },
+  "endTimeUnspecified": boolean,
+  "recurrence": [
+    string
+  ],
+  "recurringEventId": string,
+  "originalStartTime": {
+    "date": date,
+    "dateTime": datetime,
+    "timeZone": string
+  },
+  "transparency": string,
+  "visibility": string,
+  "iCalUID": string,
+  "sequence": integer,
+  "attendees": [
+    {
+      "id": string,
+      "email": string,
+      "displayName": string,
+      "organizer": boolean,
+      "self": boolean,
+      "resource": boolean,
+      "optional": boolean,
+      "responseStatus": string,
+      "comment": string,
+      "additionalGuests": integer
+    }
+  ],
+  "attendeesOmitted": boolean,
+  "extendedProperties": {
+    "private": {
+      (key): string
+    },
+    "shared": {
+      (key): string
+    }
+  },
+  "hangoutLink": string,
+  "conferenceData": {
+    "createRequest": {
+      "requestId": string,
+      "conferenceSolutionKey": {
+        "type": string
+      },
+      "status": {
+        "statusCode": string
+      }
+    },
+    "entryPoints": [
+      {
+        "entryPointType": string,
+        "uri": string,
+        "label": string,
+        "pin": string,
+        "accessCode": string,
+        "meetingCode": string,
+        "passcode": string,
+        "password": string
+      }
+    ],
+    "conferenceSolution": {
+      "key": {
+        "type": string
+      },
+      "name": string,
+      "iconUri": string
+    },
+    "conferenceId": string,
+    "signature": string,
+    "notes": string
+  },
+  "gadget": {
+    "type": string,
+    "title": string,
+    "link": string,
+    "iconLink": string,
+    "width": integer,
+    "height": integer,
+    "display": string,
+    "preferences": {
+      (key): string
+    }
+  },
+  "anyoneCanAddSelf": boolean,
+  "guestsCanInviteOthers": boolean,
+  "guestsCanModify": boolean,
+  "guestsCanSeeOtherGuests": boolean,
+  "privateCopy": boolean,
+  "locked": boolean,
+  "reminders": {
+    "useDefault": boolean,
+    "overrides": [
+      {
+        "method": string,
+        "minutes": integer
+      }
+    ]
+  },
+  "source": {
+    "url": string,
+    "title": string
+  },
+  "attachments": [
+    {
+      "fileUrl": string,
+      "title": string,
+      "mimeType": string,
+      "iconLink": string,
+      "fileId": string
+    }
+  ]
+}
